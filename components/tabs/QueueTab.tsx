@@ -284,17 +284,16 @@ export default function QueueTab({ session, onUpdate }: Props) {
   async function handleGenerate() {
     setGenerating(true);
     const history = session.teamHistory ?? [];
-    const newTeams = createBalancedTeams(available, session.settings.gameMode, session.teams.length, history);
+    // Pass 0 so team names reset to A, B, C… on each reshuffle
+    const newTeams = createBalancedTeams(available, session.settings.gameMode, 0, history);
     if (newTeams.length < 2) { setGenerating(false); return; }
 
     const newCompositions = extractTeamCompositions(newTeams);
-    const allTeams = [...session.teams, ...newTeams];
-    const newQueueIds = newTeams.map((t) => t.id);
-    const updatedQueue = [...session.queue, ...newQueueIds];
 
     await onUpdate({
-      teams: allTeams,
-      queue: updatedQueue,
+      teams: newTeams,          // replace, not append
+      queue: newTeams.map((t) => t.id),
+      currentMatch: null,       // clear any active match
       status: 'active',
       teamHistory: [...history, ...newCompositions],
     });

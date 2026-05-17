@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { Session, Match, PlayerStats } from '@/lib/types';
 import { getPositionColor } from '@/lib/matching';
+import ReportModal from '@/components/ReportModal';
 
 interface Props {
   session: Session;
@@ -74,6 +76,7 @@ function MatchCard({ match, session }: { match: Match; session: Session }) {
 }
 
 export default function HistoryTab({ session }: Props) {
+  const [showReport, setShowReport] = useState(false);
   const matches = session.completedMatches;
 
   // Player leaderboard
@@ -118,6 +121,19 @@ export default function HistoryTab({ session }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* Report button */}
+      {matches.length > 0 && (
+        <button
+          onClick={() => setShowReport(true)}
+          className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-white font-black py-4 rounded-2xl text-lg transition-colors shadow-lg shadow-orange-500/20"
+        >
+          📄 Generate Session Report
+        </button>
+      )}
+
+      {showReport && <ReportModal session={session} onClose={() => setShowReport(false)} />}
+
       {/* Today's highlights */}
       {matches.length > 0 && (
         <div>

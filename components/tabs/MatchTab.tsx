@@ -205,14 +205,19 @@ export default function MatchTab({ session, onUpdate }: Props) {
   if (!match) {
     const nextA = session.queue[0] ? session.teams.find((t) => t.id === session.queue[0]) : null;
     const nextB = session.queue[1] ? session.teams.find((t) => t.id === session.queue[1]) : null;
+    const isEnded = session.status === 'completed';
 
     return (
       <div className="flex flex-col items-center gap-6 py-8">
-        <div className="text-6xl">⏸</div>
+        <div className="text-6xl">{isEnded ? '🏁' : '⏸'}</div>
         <div className="text-center">
-          <h3 className="text-2xl font-black text-white">No Active Match</h3>
+          <h3 className="text-2xl font-black text-white">
+            {isEnded ? 'Session Ended' : 'No Active Match'}
+          </h3>
           <p className="text-gray-400 mt-2">
-            {session.queue.length >= 2
+            {isEnded
+              ? 'Great games today! Check the History tab for final stats.'
+              : session.queue.length >= 2
               ? 'Ready to start — go to Queue tab and tap Start Match'
               : session.teams.length === 0
               ? 'Generate teams in the Queue tab to get started'
@@ -220,7 +225,7 @@ export default function MatchTab({ session, onUpdate }: Props) {
           </p>
         </div>
 
-        {nextA && nextB && (
+        {nextA && nextB && !isEnded && (
           <div className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4">
             <p className="text-sm text-gray-400 text-center mb-3">Next up</p>
             <div className="flex items-center justify-center gap-4">

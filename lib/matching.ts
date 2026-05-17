@@ -5,11 +5,26 @@ function generateTeamName(index: number): string {
   return names[index] ?? `Team ${index + 1}`;
 }
 
-// Snake-draft by skill level, with position-aware first pick per team
+function shuffleArray<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function compositionKey(playerIds: string[]): string {
+  return [...playerIds].sort().join(',');
+}
+
+// Snake-draft by skill level, with randomization within skill groups to prevent repeated lineups.
+// Tries up to 8 shuffles to find a combination not in teamHistory.
 export function createBalancedTeams(
   players: Player[],
   gameMode: GameMode,
-  existingTeamCount: number = 0
+  existingTeamCount: number = 0,
+  teamHistory: string[][] = []
 ): Team[] {
   const playersPerTeam = parseInt(gameMode[0]);
   const available = players.filter((p) => p.isAvailable);
@@ -17,35 +32,74 @@ export function createBalancedTeams(
 
   if (numTeams < 2) return [];
 
-  // Sort by skill descending; tiebreak: PG/SG first (ball-handlers)
+  const historyKeys = new Set(teamHistory.map(compositionKey));
   const ballHandlers = new Set<string>(['PG', 'SG']);
-  const sorted = [...available].sort((a, b) => {
-    if (b.skillLevel !== a.skillLevel) return b.skillLevel - a.skillLevel;
-    const aHasBH = a.positions.some((p) => ballHandlers.has(p)) ? 1 : 0;
-    const bHasBH = b.positions.some((p) => ballHandlers.has(p)) ? 1 : 0;
-    return bHasBH - aHasBH;
-  });
 
-  const teams: Team[] = Array.from({ length: numTeams }, (_, i) => ({
-    id: crypto.randomUUID(),
-    name: generateTeamName(existingTeamCount + i),
-    playerIds: [],
-    consecutiveWins: 0,
-    isResting: false,
-    restRoundsLeft: 0,
-    stats: { wins: 0, losses: 0, gamesPlayed: 0 },
-  }));
+  // Group players by skill level for intra-group shuffling
+  const bySkill = new Map<number, Player[]>();
+  for (const p of available) {
+    if (!bySkill.has(p.skillLevel)) bySkill.set(p.skillLevel, []);
+    bySkill.get(p.skillLevel)!.push(p);
+  }
+  const skillLevels = [...bySkill.keys()].sort((a, b) => b - a);
 
-  // Snake draft
-  const draftPool = sorted.slice(0, numTeams * playersPerTeam);
-  draftPool.forEach((player, index) => {
-    const round = Math.floor(index / numTeams);
-    const posInRound = index % numTeams;
-    const teamIndex = round % 2 === 0 ? posInRound : numTeams - 1 - posInRound;
-    teams[teamIndex].playerIds.push(player.id);
-  });
+  let bestTeams: Team[] = [];
+  let bestOverlap = Infinity;
 
-  return teams;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const sorted: Player[] = [];
+
+    for (const skill of skillLevels) {
+      const group = bySkill.get(skill)!;
+      let ordered: Player[];
+
+      if (attempt === 0) {
+        // First attempt: ball-handlers first (original balanced behavior)
+        const bh = group.filter((p) => p.positions.some((pos) => ballHandlers.has(pos)));
+        const rest = group.filter((p) => !p.positions.some((pos) => ballHandlers.has(pos)));
+        ordered = [...shuffleArray(bh), ...shuffleArray(rest)];
+      } else {
+        ordered = shuffleArray(group);
+      }
+
+      sorted.push(...ordered);
+    }
+
+    const teams: Team[] = Array.from({ length: numTeams }, (_, i) => ({
+      id: crypto.randomUUID(),
+      name: generateTeamName(existingTeamCount + i),
+      playerIds: [],
+      consecutiveWins: 0,
+      isResting: false,
+      restRoundsLeft: 0,
+      stats: { wins: 0, losses: 0, gamesPlayed: 0 },
+    }));
+
+    // Snake draft
+    const draftPool = sorted.slice(0, numTeams * playersPerTeam);
+    draftPool.forEach((player, index) => {
+      const round = Math.floor(index / numTeams);
+      const posInRound = index % numTeams;
+      const teamIndex = round % 2 === 0 ? posInRound : numTeams - 1 - posInRound;
+      teams[teamIndex].playerIds.push(player.id);
+    });
+
+    const overlap = teams.filter((t) => historyKeys.has(compositionKey(t.playerIds))).length;
+
+    if (overlap === 0) return teams;
+
+    if (overlap < bestOverlap) {
+      bestOverlap = overlap;
+      bestTeams = teams;
+    }
+  }
+
+  return bestTeams.length > 0 ? bestTeams : [];
+}
+
+// Returns the sorted playerIds for each team — used to update teamHistory after generation.
+export function extractTeamCompositions(teams: Team[]): string[][] {
+  return teams.map((t) => [...t.playerIds].sort());
 }
 
 export function computeTeamSkill(team: Team, players: Player[]): number {

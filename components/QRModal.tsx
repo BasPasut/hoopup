@@ -33,7 +33,7 @@ export default function QRModal({ code, sessionName, onClose }: Props) {
         {/* QR Code */}
         {url && (
           <div className="bg-white p-4 rounded-xl">
-            <QRCodeSVG value={url} size={200} level="M" />
+            <QRCodeSVG value={url} size={200} level="H" bgColor="#ffffff" fgColor="#000000" />
           </div>
         )}
 

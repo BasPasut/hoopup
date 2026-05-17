@@ -66,6 +66,8 @@ export interface Session {
   completedMatches: Match[];
   status: SessionStatus;
   updatedAt: string;
+  // sorted playerIds arrays from past team generations — used to avoid duplicate lineups
+  teamHistory: string[][];
 }
 
 export interface PlayerStats {

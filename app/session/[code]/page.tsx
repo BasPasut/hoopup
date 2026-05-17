@@ -18,6 +18,27 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'history', label: 'History', icon: '📊' },
 ];
 
+const POLL_MS = 5000;
+// Sessions are cached in localStorage as a resilience layer against server cold-starts.
+const cacheKey = (code: string) => `hoopup-session-${code}`;
+
+function readCache(code: string): Session | null {
+  try {
+    const raw = localStorage.getItem(cacheKey(code));
+    return raw ? (JSON.parse(raw) as Session) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(code: string, session: Session) {
+  try {
+    localStorage.setItem(cacheKey(code), JSON.stringify(session));
+  } catch {
+    // Storage quota exceeded — silently ignore
+  }
+}
+
 export default function SessionPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
   const router = useRouter();
@@ -33,24 +54,51 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
     try {
       const res = await fetch(`/api/sessions/${code}`, { cache: 'no-store' });
       if (!res.ok) {
-        setError('Session not found');
+        // Server lost the session (cold start / Redis miss) — keep showing cached data if we have it
+        if (res.status === 404) {
+          const cached = readCache(code);
+          if (cached) {
+            // Session gone from server but we have local data — keep showing it
+            setLoading(false);
+            return;
+          }
+          setError('Session not found');
+        }
         setLoading(false);
         return;
       }
       const data: Session = await res.json();
       setSession(data);
+      writeCache(code, data);
       setLoading(false);
     } catch {
+      // Network failure — keep showing whatever we have
       setLoading(false);
     }
   }, [code]);
 
-  // Initial load + polling every 5s
+  // Initial load: show localStorage immediately, then sync from server
   useEffect(() => {
+    const cached = readCache(code);
+    if (cached) {
+      setSession(cached);
+      setLoading(false);
+    }
+
     fetchSession();
-    const interval = setInterval(fetchSession, 5000);
-    return () => clearInterval(interval);
-  }, [fetchSession]);
+    const interval = setInterval(fetchSession, POLL_MS);
+
+    // Re-sync the moment the tab/screen becomes visible again (prevents stale state after lock)
+    const handleVisibility = () => {
+      if (!document.hidden) fetchSession();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [fetchSession, code]);
 
   // Auto-switch to match tab when a match starts
   useEffect(() => {
@@ -65,6 +113,7 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
     // Optimistic update
     const optimistic = { ...session, ...updates };
     setSession(optimistic);
+    writeCache(code, optimistic);
     try {
       const res = await fetch(`/api/sessions/${code}`, {
         method: 'PATCH',
@@ -74,10 +123,12 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
       if (res.ok) {
         const updated = await res.json();
         setSession(updated);
+        writeCache(code, updated);
       }
     } catch {
       // Revert on error
       setSession(session);
+      writeCache(code, session);
     }
     setSaving(false);
   }
@@ -102,7 +153,7 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
       <div className="flex flex-col items-center justify-center min-h-dvh gap-4 px-6">
         <div className="text-5xl">❌</div>
         <p className="text-white text-xl font-bold">Session not found</p>
-        <p className="text-gray-400 text-center">The code "{code}" doesn&apos;t match any active session.</p>
+        <p className="text-gray-400 text-center">The code &quot;{code}&quot; doesn&apos;t match any active session.</p>
         <button
           onClick={() => router.push('/')}
           className="mt-4 bg-orange-500 text-white font-bold px-8 py-3 rounded-xl hover:bg-orange-400 transition-colors"
@@ -112,8 +163,6 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
       </div>
     );
   }
-
-  const matchIndicator = session.currentMatch ? '🟢' : '';
 
   return (
     <div className="flex flex-col min-h-dvh">
@@ -131,6 +180,9 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
               <span className="text-gray-600">·</span>
               <span className="text-gray-400">{session.players.length} players</span>
               {saving && <span className="text-orange-400 text-xs">Saving...</span>}
+              {session.status === 'completed' && (
+                <span className="text-red-400 text-xs font-bold">· Ended</span>
+              )}
             </div>
           </div>
 

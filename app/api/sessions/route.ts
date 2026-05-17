@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       completedMatches: [],
       status: 'setup',
       updatedAt: now.toISOString(),
+      teamHistory: [],
     };
 
     await setSession(session);

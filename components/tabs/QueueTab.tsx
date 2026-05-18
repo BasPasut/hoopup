@@ -55,11 +55,18 @@ function TeamCard({ team, session, rank, badge, onRename }: { team: Team; sessio
             ) : (
               <button
                 onClick={() => onRename && setEditing(true)}
-                className="font-display text-xl tracking-widest text-white leading-none flex items-center gap-1.5 group"
+                className="font-display text-xl tracking-widest text-white leading-none flex items-center gap-2"
                 title={onRename ? 'Tap to rename' : undefined}
               >
                 {team.name}
-                {onRename && <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: '#3D4557' }}>✎</span>}
+                {onRename && (
+                  <span
+                    className="flex items-center justify-center w-5 h-5 rounded-md text-[11px]"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: '#8892A4' }}
+                  >
+                    ✎
+                  </span>
+                )}
               </button>
             )}
             <div className="flex items-center gap-2 mt-0.5">

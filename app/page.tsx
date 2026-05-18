@@ -27,7 +27,7 @@ export default function Home() {
   const [timerMinutes, setTimerMinutes] = useState(8);
   const [winsToRest, setWinsToRest] = useState(2);
   const [restRounds, setRestRounds] = useState(1);
-  const [scoreMode, setScoreMode] = useState<ScoreMode>('1-2');
+  const [scoreMode, setScoreMode] = useState<ScoreMode>('2-3');
   const [scoreToWinEnabled, setScoreToWinEnabled] = useState(false);
   const [scoreToWin, setScoreToWin] = useState(11);
 
@@ -307,7 +307,7 @@ export default function Home() {
               >
                 {mode === '1-2' ? '1 / 2' : '2 / 3'}
                 <span className="text-[9px] font-semibold tracking-widest uppercase opacity-70">
-                  {mode === '1-2' ? 'Regular' : 'Basketball'}
+                  {mode === '1-2' ? 'Street' : 'Normal'}
                 </span>
               </button>
             ))}

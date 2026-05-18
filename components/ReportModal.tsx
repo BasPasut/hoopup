@@ -65,9 +65,28 @@ export default function ReportModal({ session, onClose }: Props) {
 
       {/* Scroll container */}
       <div className="fixed inset-0 z-[60] overflow-y-auto">
-        <div className="min-h-full px-3 py-6 pb-32 flex justify-center">
+        <div className="min-h-full px-3 py-4 flex flex-col items-center gap-4">
 
-          <div id="hoopup-report" className="bg-white w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl">
+          {/* Action buttons — inside scroll container so they're always clickable */}
+          <div className="flex gap-3 w-full max-w-xl sticky top-4 z-10">
+            <button
+              onClick={handleExportImage}
+              disabled={exporting}
+              className="flex-1 text-white font-black py-4 rounded-2xl text-base transition-colors disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 8px 24px rgba(255,107,0,0.4)' }}
+            >
+              {exporting ? '⏳ Exporting...' : '🖼 Save as Image'}
+            </button>
+            <button
+              onClick={onClose}
+              className="font-bold px-6 py-4 rounded-2xl transition-colors"
+              style={{ background: 'rgba(14,17,23,0.95)', border: '1.5px solid var(--border)', color: '#8892A4' }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div id="hoopup-report" className="bg-white w-full max-w-xl rounded-3xl overflow-hidden shadow-2xl mb-8">
 
             {/* ── Header ── */}
             <div
@@ -241,24 +260,6 @@ export default function ReportModal({ session, onClose }: Props) {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Floating action buttons */}
-      <div className="fixed bottom-6 left-0 right-0 z-[70] flex justify-center gap-3 px-4">
-        <button
-          onClick={handleExportImage}
-          disabled={exporting}
-          className="text-white font-black px-7 py-4 rounded-2xl shadow-2xl text-base transition-colors disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 8px 24px rgba(255,107,0,0.4)' }}
-        >
-          {exporting ? '⏳ Exporting...' : '🖼 Save as Image'}
-        </button>
-        <button
-          onClick={onClose}
-          className="bg-gray-800 hover:bg-gray-700 text-white font-bold px-6 py-4 rounded-2xl shadow-xl transition-colors"
-        >
-          ✕ Close
-        </button>
       </div>
     </>
   );

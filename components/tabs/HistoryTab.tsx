@@ -5,15 +5,12 @@ import { Session, Match, PlayerStats } from '@/lib/types';
 import { getPositionColor } from '@/lib/matching';
 import ReportModal from '@/components/ReportModal';
 
-interface Props {
-  session: Session;
-}
+interface Props { session: Session; }
 
 function formatDuration(match: Match): string {
   if (!match.endedAt || !match.startedAt) {
-    const secs = match.elapsedSeconds;
-    const m = Math.floor(secs / 60);
-    const s = Math.floor(secs % 60);
+    const m = Math.floor(match.elapsedSeconds / 60);
+    const s = Math.floor(match.elapsedSeconds % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
   const elapsed = (new Date(match.endedAt).getTime() - new Date(match.startedAt).getTime()) / 1000 + match.elapsedSeconds;
@@ -26,45 +23,54 @@ function MatchCard({ match, session }: { match: Match; session: Session }) {
   const teamA = session.teams.find((t) => t.id === match.teamAId);
   const teamB = session.teams.find((t) => t.id === match.teamBId);
   const winner = match.winnerId ? session.teams.find((t) => t.id === match.winnerId) : null;
-  const loser = match.winnerId ? session.teams.find((t) => t.id !== match.winnerId && [match.teamAId, match.teamBId].includes(t.id)) : null;
+  const loser  = match.winnerId ? session.teams.find((t) => t.id !== match.winnerId && [match.teamAId, match.teamBId].includes(t.id)) : null;
+
+  const aWon = match.winnerId === teamA?.id;
+  const bWon = match.winnerId === teamB?.id;
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Match #{match.round}</span>
-        <span className="text-xs text-gray-500">{match.endedAt ? new Date(match.endedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'In progress'}</span>
+    <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
+        <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#3D4557' }}>Match #{match.round}</span>
+        <span className="text-[10px]" style={{ color: '#3D4557' }}>
+          {match.endedAt ? new Date(match.endedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'In progress'}
+        </span>
       </div>
 
-      <div className="flex items-center gap-3">
-        <div className={`flex-1 text-center p-3 rounded-xl ${match.winnerId === teamA?.id ? 'bg-green-500/20 border border-green-500/30' : 'bg-gray-700/50'}`}>
-          <div className={`font-black text-lg ${match.winnerId === teamA?.id ? 'text-green-400' : 'text-gray-400'}`}>
-            {teamA?.name ?? '—'}
-          </div>
-          <div className="text-3xl font-black text-white mt-1">{match.score.teamA}</div>
-          {match.winnerId === teamA?.id && <div className="text-green-400 text-xs font-bold mt-1">🏆 WIN</div>}
+      <div className="grid grid-cols-3 items-center p-4 gap-3">
+        <div
+          className="text-center p-3 rounded-xl"
+          style={aWon ? { background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' } : { background: 'var(--surface)' }}
+        >
+          <div className="font-display text-lg tracking-widest leading-none" style={{ color: aWon ? '#4ADE80' : '#8892A4' }}>{teamA?.name ?? '—'}</div>
+          <div className="font-display text-4xl text-white mt-2 tabular-nums">{match.score.teamA}</div>
+          {aWon && <div className="text-[10px] font-bold mt-1.5 text-green-400">🏆 WIN</div>}
         </div>
 
-        <div className="text-gray-500 font-bold text-sm">VS</div>
+        <div className="text-center">
+          <span className="text-xs font-black tracking-widest" style={{ color: '#3D4557' }}>VS</span>
+        </div>
 
-        <div className={`flex-1 text-center p-3 rounded-xl ${match.winnerId === teamB?.id ? 'bg-green-500/20 border border-green-500/30' : 'bg-gray-700/50'}`}>
-          <div className={`font-black text-lg ${match.winnerId === teamB?.id ? 'text-green-400' : 'text-gray-400'}`}>
-            {teamB?.name ?? '—'}
-          </div>
-          <div className="text-3xl font-black text-white mt-1">{match.score.teamB}</div>
-          {match.winnerId === teamB?.id && <div className="text-green-400 text-xs font-bold mt-1">🏆 WIN</div>}
+        <div
+          className="text-center p-3 rounded-xl"
+          style={bWon ? { background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' } : { background: 'var(--surface)' }}
+        >
+          <div className="font-display text-lg tracking-widest leading-none" style={{ color: bWon ? '#4ADE80' : '#8892A4' }}>{teamB?.name ?? '—'}</div>
+          <div className="font-display text-4xl text-white mt-2 tabular-nums">{match.score.teamB}</div>
+          {bWon && <div className="text-[10px] font-bold mt-1.5 text-green-400">🏆 WIN</div>}
         </div>
       </div>
 
       {winner && loser && (
-        <div className="flex flex-wrap gap-2 mt-3">
+        <div className="flex flex-wrap gap-1.5 px-4 pb-4">
           {winner.playerIds.map((pid) => {
             const p = session.players.find((pl) => pl.id === pid);
             if (!p) return null;
             return (
-              <div key={pid} className="flex items-center gap-1 bg-green-500/10 border border-green-500/20 rounded-lg px-2 py-1">
-                <span className="text-green-400 text-xs font-bold">{p.name}</span>
-                {p.positions.slice(0, 1).map((pos) => (
-                  <span key={pos} className={`${getPositionColor(pos)} text-white text-xs px-1 rounded`}>{pos}</span>
+              <div key={pid} className="flex items-center gap-1 rounded-lg px-2 py-1" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                <span className="text-green-400 text-[11px] font-bold">{p.name}</span>
+                {p.positions.map((pos) => (
+                  <span key={pos} className={`${getPositionColor(pos)} text-white text-[9px] px-1 rounded`}>{pos}</span>
                 ))}
               </div>
             );
@@ -79,54 +85,37 @@ export default function HistoryTab({ session }: Props) {
   const [showReport, setShowReport] = useState(false);
   const matches = session.completedMatches;
 
-  // Player leaderboard
   const playerStats: PlayerStats[] = session.players
-    .map((player) => ({
-      player,
-      wins: player.stats.wins,
-      gamesPlayed: player.stats.gamesPlayed,
-      winRate: player.stats.gamesPlayed > 0 ? player.stats.wins / player.stats.gamesPlayed : 0,
-    }))
+    .map((player) => ({ player, wins: player.stats.wins, gamesPlayed: player.stats.gamesPlayed, winRate: player.stats.gamesPlayed > 0 ? player.stats.wins / player.stats.gamesPlayed : 0 }))
     .filter((ps) => ps.gamesPlayed > 0)
     .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
 
-  // Team leaderboard
-  const teamStats = [...session.teams]
-    .filter((t) => t.stats.gamesPlayed > 0)
-    .sort((a, b) => b.stats.wins - a.stats.wins);
-
-  // Session highlights
+  const teamStats = [...session.teams].filter((t) => t.stats.gamesPlayed > 0).sort((a, b) => b.stats.wins - a.stats.wins);
   const mostWinsTeam = teamStats[0];
-  const longestStreak = session.teams.reduce(
-    (best, t) => Math.max(best, t.stats.wins),
-    0
-  );
-  const avgMatchDuration =
-    matches.length > 0
-      ? matches.reduce((sum, m) => {
-          if (!m.endedAt || !m.startedAt) return sum + m.elapsedSeconds;
-          return sum + (new Date(m.endedAt).getTime() - new Date(m.startedAt).getTime()) / 1000 + m.elapsedSeconds;
-        }, 0) / matches.length
-      : 0;
+  const avgMatchDuration = matches.length > 0
+    ? matches.reduce((sum, m) => {
+        if (!m.endedAt || !m.startedAt) return sum + m.elapsedSeconds;
+        return sum + (new Date(m.endedAt).getTime() - new Date(m.startedAt).getTime()) / 1000 + m.elapsedSeconds;
+      }, 0) / matches.length
+    : 0;
 
   if (matches.length === 0 && session.players.every((p) => p.stats.gamesPlayed === 0)) {
     return (
-      <div className="flex flex-col items-center py-12 text-gray-500">
+      <div className="flex flex-col items-center py-14" style={{ color: '#3D4557' }}>
         <div className="text-5xl mb-3">📊</div>
-        <p className="text-lg font-medium text-center">No history yet</p>
-        <p className="text-sm mt-1 text-center">Stats will appear here as matches are played</p>
+        <p className="text-base font-bold text-center">No history yet</p>
+        <p className="text-sm mt-1 text-center">Stats will appear as matches are played</p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
-
-      {/* Report button */}
       {matches.length > 0 && (
         <button
           onClick={() => setShowReport(true)}
-          className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-white font-black py-4 rounded-2xl text-lg transition-colors shadow-lg shadow-orange-500/20"
+          className="w-full flex items-center justify-center gap-2 text-white font-bold py-4 rounded-2xl transition-all uppercase tracking-wide"
+          style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 6px 20px rgba(255,107,0,0.3)' }}
         >
           📄 Generate Session Report
         </button>
@@ -134,30 +123,26 @@ export default function HistoryTab({ session }: Props) {
 
       {showReport && <ReportModal session={session} onClose={() => setShowReport(false)} />}
 
-      {/* Today's highlights */}
+      {/* Highlights */}
       {matches.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">📅 Today&apos;s Highlights</h3>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 text-center">
-              <div className="text-2xl font-black text-orange-500">{matches.length}</div>
-              <div className="text-xs text-gray-400 mt-0.5">Matches</div>
-            </div>
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 text-center">
-              <div className="text-2xl font-black text-blue-400">{session.players.length}</div>
-              <div className="text-xs text-gray-400 mt-0.5">Players</div>
-            </div>
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 text-center">
-              <div className="text-2xl font-black text-green-400">
-                {Math.floor(avgMatchDuration / 60)}m
+          <SectionLabel>Today&apos;s Highlights</SectionLabel>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {[
+              { value: matches.length, label: 'Matches', color: 'var(--orange)' },
+              { value: session.players.length, label: 'Players', color: '#60A5FA' },
+              { value: `${Math.floor(avgMatchDuration / 60)}m`, label: 'Avg Match', color: '#4ADE80' },
+            ].map(({ value, label, color }) => (
+              <div key={label} className="rounded-xl p-3 text-center" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+                <div className="font-display text-3xl leading-none" style={{ color }}>{value}</div>
+                <div className="text-[10px] font-bold tracking-widest uppercase mt-1" style={{ color: '#3D4557' }}>{label}</div>
               </div>
-              <div className="text-xs text-gray-400 mt-0.5">Avg Match</div>
-            </div>
+            ))}
           </div>
           {mostWinsTeam && (
-            <div className="mt-2 bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 text-center">
-              <span className="text-orange-400 font-bold">
-                🏆 Most wins today: {mostWinsTeam.name} ({mostWinsTeam.stats.wins}W)
+            <div className="mt-2 rounded-xl p-3 text-center" style={{ background: 'rgba(255,107,0,0.08)', border: '1.5px solid rgba(255,107,0,0.2)' }}>
+              <span className="font-bold text-sm" style={{ color: 'var(--orange2)' }}>
+                🏆 Most wins: {mostWinsTeam.name} ({mostWinsTeam.stats.wins}W)
               </span>
             </div>
           )}
@@ -167,69 +152,63 @@ export default function HistoryTab({ session }: Props) {
       {/* Player leaderboard */}
       {playerStats.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">👥 Player Leaderboard</h3>
-          <div className="flex flex-col gap-2">
-            {playerStats.map((ps, idx) => (
-              <div key={ps.player.id} className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0 ${
-                  idx === 0 ? 'bg-yellow-500 text-black' :
-                  idx === 1 ? 'bg-gray-400 text-black' :
-                  idx === 2 ? 'bg-orange-700 text-white' :
-                  'bg-gray-700 text-gray-300'
-                }`}>
-                  {idx + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-white truncate">{ps.player.name}</div>
-                  <div className="flex flex-wrap gap-1 mt-0.5">
-                    {ps.player.positions.map((pos) => (
-                      <span key={pos} className={`${getPositionColor(pos)} text-white text-xs font-bold px-1.5 py-0.5 rounded`}>
-                        {pos}
-                      </span>
-                    ))}
+          <SectionLabel>Player Leaderboard</SectionLabel>
+          <div className="flex flex-col gap-2 mt-2">
+            {playerStats.map((ps, idx) => {
+              const rankStyle =
+                idx === 0 ? { background: '#CA8A04', color: '#000' } :
+                idx === 1 ? { background: '#9CA3AF', color: '#000' } :
+                idx === 2 ? { background: '#B45309', color: '#fff' } :
+                { background: 'var(--surface)', color: '#8892A4' };
+              return (
+                <div key={ps.player.id} className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black flex-shrink-0" style={rankStyle}>
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-white text-sm truncate">{ps.player.name}</div>
+                    <div className="flex flex-wrap gap-1 mt-0.5">
+                      {ps.player.positions.map((pos) => (
+                        <span key={pos} className={`${getPositionColor(pos)} text-white text-[9px] font-bold px-1.5 py-0.5 rounded`}>{pos}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="font-black text-white text-sm">
+                      {ps.wins}W <span className="font-normal" style={{ color: '#3D4557' }}>/ {ps.gamesPlayed}G</span>
+                    </div>
+                    <div className="font-bold text-sm" style={{ color: ps.winRate >= 0.6 ? '#4ADE80' : ps.winRate >= 0.4 ? '#FBBF24' : '#F87171' }}>
+                      {Math.round(ps.winRate * 100)}%
+                    </div>
                   </div>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="font-black text-white">
-                    {ps.wins}W <span className="text-gray-500 font-normal">/ {ps.gamesPlayed}G</span>
-                  </div>
-                  <div className={`text-sm font-bold ${ps.winRate >= 0.6 ? 'text-green-400' : ps.winRate >= 0.4 ? 'text-yellow-400' : 'text-red-400'}`}>
-                    {Math.round(ps.winRate * 100)}%
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Team leaderboard */}
+      {/* Team standings */}
       {teamStats.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">🏀 Team Standings</h3>
-          <div className="flex flex-col gap-2">
+          <SectionLabel>Team Standings</SectionLabel>
+          <div className="flex flex-col gap-2 mt-2">
             {teamStats.map((team, idx) => (
-              <div key={team.id} className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0 ${
-                  idx === 0 ? 'bg-yellow-500 text-black' : 'bg-gray-700 text-gray-300'
-                }`}>
+              <div key={team.id} className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+                <div
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black flex-shrink-0"
+                  style={idx === 0 ? { background: '#CA8A04', color: '#000' } : { background: 'var(--surface)', color: '#8892A4' }}
+                >
                   {idx + 1}
                 </div>
                 <div className="flex-1">
-                  <div className="font-bold text-white">{team.name}</div>
-                  <div className="text-xs text-gray-400">{team.stats.gamesPlayed} games played</div>
+                  <div className="font-display text-lg tracking-widest text-white leading-none">{team.name}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: '#3D4557' }}>{team.stats.gamesPlayed} games played</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-black text-white">
-                    {team.stats.wins}W–{team.stats.losses}L
-                  </div>
-                  <div className={`text-sm font-bold ${
-                    team.stats.gamesPlayed > 0 && team.stats.wins / team.stats.gamesPlayed >= 0.6
-                      ? 'text-green-400' : 'text-gray-400'
-                  }`}>
-                    {team.stats.gamesPlayed > 0
-                      ? Math.round((team.stats.wins / team.stats.gamesPlayed) * 100) + '%'
-                      : '—'}
+                  <div className="font-black text-white text-sm">{team.stats.wins}W–{team.stats.losses}L</div>
+                  <div className="font-bold text-sm" style={{ color: team.stats.gamesPlayed > 0 && team.stats.wins / team.stats.gamesPlayed >= 0.6 ? '#4ADE80' : '#8892A4' }}>
+                    {team.stats.gamesPlayed > 0 ? Math.round((team.stats.wins / team.stats.gamesPlayed) * 100) + '%' : '—'}
                   </div>
                 </div>
               </div>
@@ -241,16 +220,26 @@ export default function HistoryTab({ session }: Props) {
       {/* Match history */}
       {matches.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            📋 Match History ({matches.length})
-          </h3>
-          <div className="flex flex-col gap-2">
-            {matches.map((match) => (
-              <MatchCard key={match.id} match={match} session={session} />
-            ))}
+          <SectionLabel count={matches.length}>Match History</SectionLabel>
+          <div className="flex flex-col gap-2 mt-2">
+            {matches.map((match) => <MatchCard key={match.id} match={match} session={session} />)}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function SectionLabel({ children, count }: { children: React.ReactNode; count?: number }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: '#3D4557' }}>{children}</span>
+      {count !== undefined && (
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,107,0,0.08)', border: '1px solid rgba(255,107,0,0.2)', color: 'var(--orange2)' }}>
+          {count}
+        </span>
+      )}
+      <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
     </div>
   );
 }

@@ -1,18 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #050508;
-  --card: #111118;
-  --border: #222230;
+  --background: #08090E;
+  --surface:    #0E1117;
+  --card:       #141820;
+  --border:     #1E2433;
+  --orange:     #FF6B00;
+  --orange2:    #FF8C38;
 }
 
 body {
   background: var(--background);
   color: #f1f5f9;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   min-height: 100dvh;
   overscroll-behavior: none;
 }
+
+/* Bebas Neue display font */
+.font-display {
+  font-family: 'Bebas Neue', sans-serif;
+}
+
+/* Subtle basketball court lines as page background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='600' viewBox='0 0 400 600'%3E%3Crect width='400' height='600' fill='none' stroke='%23FF6B00' stroke-width='2'/%3E%3Crect x='18' y='18' width='364' height='564' fill='none' stroke='%23FF6B00' stroke-width='1.5'/%3E%3Ccircle cx='200' cy='300' r='60' fill='none' stroke='%23FF6B00' stroke-width='1.5'/%3E%3Cline x1='18' y1='300' x2='382' y2='300' stroke='%23FF6B00' stroke-width='1.5'/%3E%3Crect x='118' y='18' width='164' height='130' fill='none' stroke='%23FF6B00' stroke-width='1.5'/%3E%3Crect x='118' y='452' width='164' height='130' fill='none' stroke='%23FF6B00' stroke-width='1.5'/%3E%3Ccircle cx='200' cy='78' r='28' fill='none' stroke='%23FF6B00' stroke-width='1.5'/%3E%3Ccircle cx='200' cy='522' r='28' fill='none' stroke='%23FF6B00' stroke-width='1.5'/%3E%3Cpath d='M72 148 Q200 228 328 148' fill='none' stroke='%23FF6B00' stroke-width='1.5'/%3E%3Cpath d='M72 452 Q200 372 328 452' fill='none' stroke='%23FF6B00' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-size: 400px 600px;
+}
+
+/* Ensure content sits above the court bg */
+#__next, main, header, nav, .relative { position: relative; z-index: 1; }
 
 * {
   -webkit-tap-highlight-color: transparent;
@@ -25,4 +48,4 @@ input[type="number"]::-webkit-outer-spin-button {
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }

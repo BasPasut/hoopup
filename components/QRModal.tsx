@@ -18,40 +18,44 @@ export default function QRModal({ code, sessionName, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center p-6"
+      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
       onClick={onClose}
     >
       <div
-        className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-sm w-full flex flex-col items-center gap-5"
+        className="max-w-sm w-full flex flex-col items-center gap-5 p-6 rounded-3xl"
+        style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center">
-          <h3 className="text-2xl font-black text-white">Join Session</h3>
-          <p className="text-gray-400 mt-1 text-sm">{sessionName}</p>
+          <h3 className="font-display text-3xl tracking-widest text-white">Join Session</h3>
+          <p className="text-sm mt-1" style={{ color: '#8892A4' }}>{sessionName}</p>
         </div>
 
-        {/* QR Code */}
         {url && (
-          <div className="bg-white p-4 rounded-xl">
-            <QRCodeSVG value={url} size={200} level="H" bgColor="#ffffff" fgColor="#000000" />
+          <div className="p-4 rounded-2xl" style={{ background: '#fff' }}>
+            <QRCodeSVG value={url} size={180} level="H" bgColor="#ffffff" fgColor="#08090E" />
           </div>
         )}
 
-        {/* Code display */}
-        <div className="text-center">
-          <p className="text-gray-400 text-sm mb-2">Or enter this code</p>
-          <div className="bg-gray-800 border border-gray-700 rounded-xl px-6 py-3">
-            <span className="text-4xl font-black text-white tracking-widest">{code}</span>
+        <div className="text-center w-full">
+          <p className="text-[10px] font-bold tracking-widest uppercase mb-2" style={{ color: '#3D4557' }}>Or enter this code</p>
+          <div
+            className="rounded-2xl px-6 py-4 text-center"
+            style={{ background: 'rgba(255,107,0,0.08)', border: '1.5px solid rgba(255,107,0,0.25)' }}
+          >
+            <span className="font-display text-5xl tracking-[0.3em]" style={{ color: 'var(--orange2)' }}>{code}</span>
           </div>
         </div>
 
-        <p className="text-xs text-gray-500 text-center">
-          Scan the QR code or go to hoopup.app and enter the code
+        <p className="text-[10px] text-center" style={{ color: '#3D4557' }}>
+          Scan the QR code or go to hoopup-gang.vercel.app and enter the code
         </p>
 
         <button
           onClick={onClose}
-          className="w-full py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-white font-bold transition-colors"
+          className="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wide transition-all"
+          style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', color: '#8892A4' }}
         >
           Close
         </button>

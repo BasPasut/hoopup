@@ -5,23 +5,13 @@ import { useRouter } from 'next/navigation';
 import { GameMode, TournamentType } from '@/lib/types';
 
 const GAME_MODES: GameMode[] = ['3v3', '4v4', '5v5'];
-const TOURNAMENT_TYPES: { value: TournamentType; label: string; desc: string }[] = [
-  {
-    value: 'king-of-court',
-    label: '👑 King of the Court',
-    desc: 'Winner stays. Win 2 in a row → sit out 1 round.',
-  },
-  {
-    value: 'round-robin',
-    label: '🔄 Round Robin',
-    desc: 'Every team plays every other team once.',
-  },
-  {
-    value: 'elimination',
-    label: '⚡ Single Elimination',
-    desc: "Lose once and you're out. Classic bracket.",
-  },
+const TOURNAMENT_TYPES: { value: TournamentType; label: string; desc: string; icon: string }[] = [
+  { value: 'king-of-court', icon: '👑', label: 'King of the Court', desc: 'Winner stays. Win 2 in a row → sit out 1 round.' },
+  { value: 'round-robin',   icon: '🔄', label: 'Round Robin',        desc: 'Every team plays every other team once.' },
+  { value: 'elimination',   icon: '⚡', label: 'Single Elimination', desc: "Lose once and you're out. Classic bracket." },
 ];
+
+const FEATURES = ['Fair Matching', 'Live Timer', 'Queue Mgmt', 'Win Stats', 'QR Join'];
 
 export default function Home() {
   const router = useRouter();
@@ -74,52 +64,97 @@ export default function Home() {
     router.push(`/session/${code}`);
   }
 
+  /* ── Home ── */
   if (view === 'home') {
     return (
       <main className="flex flex-col items-center justify-center min-h-dvh px-6 py-12 gap-8">
-        <div className="text-center space-y-3">
-          <div className="text-7xl">🏀</div>
-          <h1 className="text-5xl font-black tracking-tight text-orange-500">HoopUp</h1>
-          <p className="text-gray-400 text-lg max-w-xs mx-auto">
-            Fair teams. Smart queues. No more arguments at the court.
-          </p>
+        {/* Logo */}
+        <div className="flex flex-col items-center gap-4">
+          <div
+            className="w-24 h-24 rounded-3xl flex items-center justify-center text-5xl"
+            style={{
+              background: 'linear-gradient(135deg, #FF6B00, #FF8C38)',
+              boxShadow: '0 0 0 1px rgba(255,107,0,0.3), 0 20px 48px rgba(255,107,0,0.35)',
+            }}
+          >
+            🏀
+          </div>
+          <div className="text-center">
+            <h1
+              className="font-display text-6xl tracking-widest"
+              style={{ background: 'linear-gradient(180deg,#fff 40%,rgba(255,255,255,0.5))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+            >
+              HoopUp
+            </h1>
+            <p className="text-gray-400 text-sm mt-2 max-w-xs mx-auto leading-relaxed">
+              Fair teams. Smart queues. No more arguments at the court.
+            </p>
+          </div>
         </div>
 
-        <div className="w-full max-w-sm flex flex-col gap-3">
-          <button
-            onClick={() => setView('create')}
-            className="w-full bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-white font-bold text-xl py-5 rounded-2xl transition-colors shadow-lg shadow-orange-500/20"
-          >
-            Create Session
-          </button>
-          <button
-            onClick={() => setView('join')}
-            className="w-full bg-gray-800 hover:bg-gray-700 active:bg-gray-900 text-white font-bold text-xl py-5 rounded-2xl transition-colors border border-gray-700"
-          >
-            Join with Code
-          </button>
-        </div>
-
-        <div className="flex flex-wrap gap-2 justify-center max-w-sm">
-          {['Fair team matching', 'Live timer', 'Queue management', 'Win stats', 'QR join'].map((f) => (
-            <span key={f} className="text-xs bg-gray-800 text-gray-400 px-3 py-1.5 rounded-full border border-gray-700">
+        {/* Feature pills */}
+        <div className="flex flex-wrap gap-2 justify-center max-w-xs">
+          {FEATURES.map((f) => (
+            <span
+              key={f}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full"
+              style={{ background: 'rgba(255,107,0,0.08)', border: '1px solid rgba(255,107,0,0.2)', color: '#FF8C38' }}
+            >
               {f}
             </span>
           ))}
+        </div>
+
+        {/* CTA buttons */}
+        <div className="w-full max-w-sm flex flex-col gap-3">
+          <button
+            onClick={() => setView('create')}
+            className="w-full text-white font-bold text-lg py-5 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-wide"
+            style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 8px 28px rgba(255,107,0,0.4)' }}
+          >
+            <span
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-base font-black"
+              style={{ background: 'rgba(255,255,255,0.2)' }}
+            >
+              +
+            </span>
+            Create Session
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+            <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'var(--border)' }}>or</span>
+            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+          </div>
+
+          <button
+            onClick={() => setView('join')}
+            className="w-full font-bold text-lg py-5 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-wide"
+            style={{ background: 'var(--card)', border: '1.5px solid var(--border)', color: '#CDD5E0' }}
+          >
+            <span
+              className="w-8 h-8 rounded-xl flex items-center justify-center text-base"
+              style={{ background: 'var(--surface)' }}
+            >
+              #
+            </span>
+            Join with Code
+          </button>
         </div>
       </main>
     );
   }
 
+  /* ── Join ── */
   if (view === 'join') {
     return (
       <main className="flex flex-col min-h-dvh px-6 py-12 gap-6">
-        <button onClick={() => setView('home')} className="text-gray-400 hover:text-white flex items-center gap-2 w-fit text-lg">
+        <button onClick={() => setView('home')} className="flex items-center gap-2 w-fit text-sm font-semibold uppercase tracking-widest" style={{ color: '#8892A4' }}>
           ← Back
         </button>
         <div>
-          <h2 className="text-3xl font-black text-white">Join Session</h2>
-          <p className="text-gray-400 mt-1">Enter the 6-character code from the host</p>
+          <h2 className="font-display text-4xl tracking-widest text-white">Join Session</h2>
+          <p className="text-sm mt-1" style={{ color: '#8892A4' }}>Enter the 6-character code from the host</p>
         </div>
 
         <div className="flex flex-col gap-4 max-w-sm">
@@ -128,15 +163,19 @@ export default function Home() {
             placeholder="ABC123"
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
-            className="w-full bg-gray-800 border border-gray-700 rounded-2xl px-5 py-4 text-3xl font-black text-center tracking-widest text-white placeholder-gray-600 focus:outline-none focus:border-orange-500"
+            className="w-full rounded-2xl px-5 py-5 text-4xl font-black text-center tracking-[0.3em] text-white placeholder-gray-600 focus:outline-none"
+            style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
             autoFocus
             onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--orange)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
           />
           {joinError && <p className="text-red-400 text-sm text-center">{joinError}</p>}
           <button
             onClick={handleJoin}
             disabled={joining}
-            className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold text-xl py-4 rounded-2xl transition-colors"
+            className="w-full text-white font-bold text-lg py-5 rounded-2xl transition-all disabled:opacity-50 uppercase tracking-wide"
+            style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 8px 24px rgba(255,107,0,0.35)' }}
           >
             {joining ? 'Joining...' : 'Join →'}
           </button>
@@ -145,107 +184,151 @@ export default function Home() {
     );
   }
 
+  /* ── Create ── */
   return (
-    <main className="flex flex-col min-h-dvh px-6 py-12 gap-6 pb-24">
-      <button onClick={() => setView('home')} className="text-gray-400 hover:text-white flex items-center gap-2 w-fit text-lg">
+    <main className="flex flex-col min-h-dvh px-5 py-12 gap-6 pb-28">
+      <button onClick={() => setView('home')} className="flex items-center gap-2 w-fit text-sm font-semibold uppercase tracking-widest" style={{ color: '#8892A4' }}>
         ← Back
       </button>
       <div>
-        <h2 className="text-3xl font-black text-white">New Session</h2>
-        <p className="text-gray-400 mt-1">Set up your game</p>
+        <h2 className="font-display text-4xl tracking-widest text-white">New Session</h2>
+        <p className="text-sm mt-1" style={{ color: '#8892A4' }}>Set up your game</p>
       </div>
 
-      <div className="flex flex-col gap-5 max-w-sm">
+      <div className="flex flex-col gap-6 max-w-sm">
+
+        {/* Session name */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Session Name</label>
+          <SectionLabel>Session Name</SectionLabel>
           <input
             type="text"
             value={sessionName}
             onChange={(e) => setSessionName(e.target.value)}
-            className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-orange-500"
+            className="w-full rounded-xl px-4 py-3 text-white font-semibold text-base focus:outline-none"
+            style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--orange)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
           />
         </div>
 
+        {/* Game mode */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Game Mode</label>
-          <div className="flex gap-2">
+          <SectionLabel>Game Mode</SectionLabel>
+          <div className="grid grid-cols-3 gap-2">
             {GAME_MODES.map((m) => (
               <button
                 key={m}
                 onClick={() => setGameMode(m)}
-                className={`flex-1 py-3 rounded-xl font-bold text-lg transition-colors ${
+                className="py-4 rounded-xl font-black text-xl transition-all flex flex-col items-center gap-0.5"
+                style={
                   gameMode === m
-                    ? 'bg-orange-500 text-white'
-                    : 'bg-gray-800 text-gray-400 border border-gray-700 hover:border-gray-500'
-                }`}
+                    ? { background: 'rgba(255,107,0,0.1)', border: '1.5px solid var(--orange)', color: 'var(--orange)', boxShadow: 'inset 0 0 24px rgba(255,107,0,0.06)' }
+                    : { background: 'var(--card)', border: '1.5px solid var(--border)', color: '#8892A4' }
+                }
               >
                 {m}
+                <span className="text-[9px] font-semibold tracking-widest uppercase opacity-70">
+                  {m === '3v3' ? 'Half' : m === '4v4' ? 'Standard' : 'Full'}
+                </span>
               </button>
             ))}
           </div>
         </div>
 
+        {/* Tournament format */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Tournament Format</label>
+          <SectionLabel>Tournament Format</SectionLabel>
           <div className="flex flex-col gap-2">
             {TOURNAMENT_TYPES.map((t) => (
               <button
                 key={t.value}
                 onClick={() => setTournamentType(t.value)}
-                className={`text-left p-4 rounded-xl border transition-colors ${
+                className="text-left p-4 rounded-xl transition-all flex items-start gap-3"
+                style={
                   tournamentType === t.value
-                    ? 'border-orange-500 bg-orange-500/10'
-                    : 'border-gray-700 bg-gray-800 hover:border-gray-500'
-                }`}
+                    ? { background: 'rgba(255,107,0,0.08)', border: '1.5px solid var(--orange)' }
+                    : { background: 'var(--card)', border: '1.5px solid var(--border)' }
+                }
               >
-                <div className="font-bold text-white">{t.label}</div>
-                <div className="text-sm text-gray-400 mt-0.5">{t.desc}</div>
+                <span
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                  style={{ background: tournamentType === t.value ? 'rgba(255,107,0,0.15)' : 'var(--surface)' }}
+                >
+                  {t.icon}
+                </span>
+                <div className="flex-1">
+                  <div className="font-bold text-white text-sm">{t.label}</div>
+                  <div className="text-xs mt-0.5 leading-relaxed" style={{ color: '#8892A4' }}>{t.desc}</div>
+                </div>
+                <div
+                  className="w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 flex items-center justify-center"
+                  style={{ borderColor: tournamentType === t.value ? 'var(--orange)' : 'var(--border)', background: tournamentType === t.value ? 'var(--orange)' : 'transparent' }}
+                >
+                  {tournamentType === t.value && <span className="w-2 h-2 rounded-full bg-white block" />}
+                </div>
               </button>
             ))}
           </div>
         </div>
 
+        {/* Timer */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Match Timer</label>
-          <div className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3">
-            <button
-              onClick={() => setTimerMinutes((v) => Math.max(1, v - 1))}
-              className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-bold text-xl flex items-center justify-center"
-            >−</button>
-            <span className="flex-1 text-center text-2xl font-black text-white">{timerMinutes} min</span>
-            <button
-              onClick={() => setTimerMinutes((v) => Math.min(30, v + 1))}
-              className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-bold text-xl flex items-center justify-center"
-            >+</button>
+          <SectionLabel>Match Timer</SectionLabel>
+          <div className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+            <Stepper onClick={() => setTimerMinutes((v) => Math.max(1, v - 1))}>−</Stepper>
+            <span className="flex-1 text-center text-3xl font-black text-white tabular-nums">
+              {timerMinutes} <span className="text-base font-semibold" style={{ color: '#8892A4' }}>MIN</span>
+            </span>
+            <Stepper onClick={() => setTimerMinutes((v) => Math.min(30, v + 1))}>+</Stepper>
           </div>
         </div>
 
+        {/* Wins before rest */}
         {tournamentType === 'king-of-court' && (
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Wins Before Rest</label>
-            <div className="flex items-center gap-3 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3">
-              <button
-                onClick={() => setWinsToRest((v) => Math.max(1, v - 1))}
-                className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-bold text-xl flex items-center justify-center"
-              >−</button>
-              <span className="flex-1 text-center text-2xl font-black text-white">{winsToRest} wins</span>
-              <button
-                onClick={() => setWinsToRest((v) => Math.min(5, v + 1))}
-                className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-bold text-xl flex items-center justify-center"
-              >+</button>
+            <SectionLabel>Wins Before Rest</SectionLabel>
+            <div className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+              <Stepper onClick={() => setWinsToRest((v) => Math.max(1, v - 1))}>−</Stepper>
+              <span className="flex-1 text-center text-3xl font-black text-white tabular-nums">
+                {winsToRest} <span className="text-base font-semibold" style={{ color: '#8892A4' }}>WINS</span>
+              </span>
+              <Stepper onClick={() => setWinsToRest((v) => Math.min(5, v + 1))}>+</Stepper>
             </div>
-            <p className="text-xs text-gray-500">After {winsToRest} consecutive wins, team sits out 1 round</p>
+            <p className="text-xs" style={{ color: '#3D4557' }}>After {winsToRest} consecutive wins, team sits out 1 round</p>
           </div>
         )}
 
         <button
           onClick={handleCreate}
           disabled={creating}
-          className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold text-xl py-4 rounded-2xl transition-colors mt-2 shadow-lg shadow-orange-500/20"
+          className="w-full text-white font-bold text-lg py-5 rounded-2xl transition-all disabled:opacity-50 uppercase tracking-wide flex items-center justify-center gap-3 mt-2"
+          style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 8px 28px rgba(255,107,0,0.4)' }}
         >
-          {creating ? 'Creating...' : '🏀 Start Session'}
+          <span>🏀</span>
+          {creating ? 'Creating...' : 'Start Session'}
         </button>
       </div>
     </main>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: '#3D4557' }}>{children}</span>
+      <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+    </div>
+  );
+}
+
+function Stepper({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl font-bold text-white transition-colors"
+      style={{ background: 'var(--surface)', border: '1.5px solid var(--border)' }}
+    >
+      {children}
+    </button>
   );
 }

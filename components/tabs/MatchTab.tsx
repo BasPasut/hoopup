@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Session, Team, Match } from '@/lib/types';
+import { useState, useEffect } from 'react';
+import { Session, Match } from '@/lib/types';
 
 interface Props {
   session: Session;
@@ -10,20 +10,17 @@ interface Props {
 
 function useMatchTimer(match: Match | null) {
   const [now, setNow] = useState(Date.now());
-
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(interval);
   }, []);
 
   if (!match) return { elapsed: 0, remaining: 0, isExpired: false };
-
   let elapsed = match.elapsedSeconds;
   if (match.startedAt && !match.isPaused && !match.endedAt) {
     elapsed += (now - new Date(match.startedAt).getTime()) / 1000;
   }
   elapsed = Math.min(elapsed, match.timerDuration + 60);
-
   const remaining = Math.max(0, match.timerDuration - elapsed);
   return { elapsed, remaining, isExpired: remaining === 0 };
 }
@@ -41,64 +38,33 @@ export default function MatchTab({ session, onUpdate }: Props) {
 
   const teamA = match ? session.teams.find((t) => t.id === match.teamAId) : null;
   const teamB = match ? session.teams.find((t) => t.id === match.teamBId) : null;
-
   const isRunning = !!match?.startedAt && !match.isPaused && !match.endedAt;
   const isStarted = !!match?.startedAt;
 
   async function handleStart() {
     if (!match) return;
-    const updated: Match = {
-      ...match,
-      startedAt: new Date().toISOString(),
-      isPaused: false,
-      pausedAt: null,
-    };
-    await onUpdate({ currentMatch: updated });
+    await onUpdate({ currentMatch: { ...match, startedAt: new Date().toISOString(), isPaused: false, pausedAt: null } });
   }
 
   async function handlePause() {
-    if (!match || !match.startedAt) return;
+    if (!match?.startedAt) return;
     const elapsed = match.elapsedSeconds + (Date.now() - new Date(match.startedAt).getTime()) / 1000;
-    const updated: Match = {
-      ...match,
-      isPaused: true,
-      pausedAt: new Date().toISOString(),
-      elapsedSeconds: elapsed,
-      startedAt: null,
-    };
-    await onUpdate({ currentMatch: updated });
+    await onUpdate({ currentMatch: { ...match, isPaused: true, pausedAt: new Date().toISOString(), elapsedSeconds: elapsed, startedAt: null } });
   }
 
   async function handleResume() {
     if (!match) return;
-    const updated: Match = {
-      ...match,
-      startedAt: new Date().toISOString(),
-      isPaused: false,
-      pausedAt: null,
-    };
-    await onUpdate({ currentMatch: updated });
+    await onUpdate({ currentMatch: { ...match, startedAt: new Date().toISOString(), isPaused: false, pausedAt: null } });
   }
 
   async function handleReset() {
     if (!match) return;
-    const updated: Match = {
-      ...match,
-      startedAt: null,
-      isPaused: false,
-      pausedAt: null,
-      elapsedSeconds: 0,
-    };
-    await onUpdate({ currentMatch: updated });
+    await onUpdate({ currentMatch: { ...match, startedAt: null, isPaused: false, pausedAt: null, elapsedSeconds: 0 } });
   }
 
   async function adjustScore(side: 'teamA' | 'teamB', delta: number) {
     if (!match) return;
-    const newScore = {
-      ...match.score,
-      [side]: Math.max(0, match.score[side] + delta),
-    };
-    await onUpdate({ currentMatch: { ...match, score: newScore } });
+    await onUpdate({ currentMatch: { ...match, score: { ...match.score, [side]: Math.max(0, match.score[side] + delta) } } });
   }
 
   async function handleDeclareWinner(winnerId: string) {
@@ -106,102 +72,45 @@ export default function MatchTab({ session, onUpdate }: Props) {
     setDeclaring(true);
 
     const winnerTeam = session.teams.find((t) => t.id === winnerId)!;
-    const loserTeam = session.teams.find((t) => t.id !== winnerId && [match.teamAId, match.teamBId].includes(t.id))!;
+    const loserTeam  = session.teams.find((t) => t.id !== winnerId && [match.teamAId, match.teamBId].includes(t.id))!;
 
     const newConsecWins = winnerTeam.consecutiveWins + 1;
     const winsToRest = session.settings.consecutiveWinsToRest;
     const mustRest = newConsecWins >= winsToRest;
 
-    // Update teams
     const updatedTeams = session.teams.map((team) => {
-      if (team.id === winnerId) {
-        return {
-          ...team,
-          consecutiveWins: mustRest ? 0 : newConsecWins,
-          isResting: mustRest,
-          restRoundsLeft: mustRest ? session.settings.restRounds : 0,
-          stats: {
-            ...team.stats,
-            wins: team.stats.wins + 1,
-            gamesPlayed: team.stats.gamesPlayed + 1,
-          },
-        };
-      }
-      if (team.id === loserTeam.id) {
-        return {
-          ...team,
-          consecutiveWins: 0,
-          stats: {
-            ...team.stats,
-            losses: team.stats.losses + 1,
-            gamesPlayed: team.stats.gamesPlayed + 1,
-          },
-        };
-      }
+      if (team.id === winnerId) return { ...team, consecutiveWins: mustRest ? 0 : newConsecWins, isResting: mustRest, restRoundsLeft: mustRest ? session.settings.restRounds : 0, stats: { ...team.stats, wins: team.stats.wins + 1, gamesPlayed: team.stats.gamesPlayed + 1 } };
+      if (team.id === loserTeam.id) return { ...team, consecutiveWins: 0, stats: { ...team.stats, losses: team.stats.losses + 1, gamesPlayed: team.stats.gamesPlayed + 1 } };
       return team;
     });
 
-    // Update players stats
     const updatedPlayers = session.players.map((player) => {
       const onWinner = winnerTeam.playerIds.includes(player.id);
-      const onLoser = loserTeam.playerIds.includes(player.id);
+      const onLoser  = loserTeam.playerIds.includes(player.id);
       if (!onWinner && !onLoser) return player;
-      return {
-        ...player,
-        stats: {
-          gamesPlayed: player.stats.gamesPlayed + 1,
-          wins: player.stats.wins + (onWinner ? 1 : 0),
-        },
-      };
+      return { ...player, stats: { gamesPlayed: player.stats.gamesPlayed + 1, wins: player.stats.wins + (onWinner ? 1 : 0) } };
     });
 
-    // Completed match record
-    const completedMatch: Match = {
-      ...match,
-      endedAt: new Date().toISOString(),
-      winnerId,
-    };
-
-    // Build next queue: advance resting teams, add winner (unless resting), loser goes to back
+    const completedMatch: Match = { ...match, endedAt: new Date().toISOString(), winnerId };
     const updatedTeamsMap = new Map(updatedTeams.map((t) => [t.id, t]));
 
-    // Decrement rest for resting teams
     const processedTeams = updatedTeams.map((t) => {
-      if (t.isResting && t.id !== winnerId) {
-        const newRest = t.restRoundsLeft - 1;
-        return { ...t, restRoundsLeft: newRest, isResting: newRest > 0 };
-      }
+      if (t.isResting && t.id !== winnerId) { const newRest = t.restRoundsLeft - 1; return { ...t, restRoundsLeft: newRest, isResting: newRest > 0 }; }
       return t;
     });
 
-    // Rebuild queue: existing queue + winner (if not resting) + loser at back
     let newQueue = [...session.queue];
-
-    // Winner stays if not resting; goes to front of queue
     const winnerFinal = processedTeams.find((t) => t.id === winnerId)!;
-    if (!winnerFinal.isResting) {
-      newQueue = [winnerId, ...newQueue];
-    }
-
-    // Loser goes to back
+    if (!winnerFinal.isResting) newQueue = [winnerId, ...newQueue];
     newQueue = [...newQueue, loserTeam.id];
-
-    // Remove teams that just came off rest and add them to queue
-    const justCameBack = processedTeams.filter(
-      (t) => !t.isResting && updatedTeamsMap.get(t.id)?.isResting && t.id !== winnerId
-    );
+    const justCameBack = processedTeams.filter((t) => !t.isResting && updatedTeamsMap.get(t.id)?.isResting && t.id !== winnerId);
     newQueue = [...newQueue, ...justCameBack.map((t) => t.id)];
 
-    await onUpdate({
-      teams: processedTeams,
-      players: updatedPlayers,
-      currentMatch: null,
-      queue: newQueue,
-      completedMatches: [completedMatch, ...session.completedMatches],
-    });
+    await onUpdate({ teams: processedTeams, players: updatedPlayers, currentMatch: null, queue: newQueue, completedMatches: [completedMatch, ...session.completedMatches] });
     setDeclaring(false);
   }
 
+  /* ── No active match ── */
   if (!match) {
     const nextA = session.queue[0] ? session.teams.find((t) => t.id === session.queue[0]) : null;
     const nextB = session.queue[1] ? session.teams.find((t) => t.id === session.queue[1]) : null;
@@ -209,14 +118,19 @@ export default function MatchTab({ session, onUpdate }: Props) {
 
     return (
       <div className="flex flex-col items-center gap-6 py-8">
-        <div className="text-6xl">{isEnded ? '🏁' : '⏸'}</div>
+        <div
+          className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl"
+          style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
+        >
+          {isEnded ? '🏁' : '⏸'}
+        </div>
         <div className="text-center">
-          <h3 className="text-2xl font-black text-white">
+          <h3 className="font-display text-3xl tracking-widest text-white">
             {isEnded ? 'Session Ended' : 'No Active Match'}
           </h3>
-          <p className="text-gray-400 mt-2">
+          <p className="text-sm mt-2 leading-relaxed max-w-xs mx-auto" style={{ color: '#8892A4' }}>
             {isEnded
-              ? 'Great games today! Check the History tab for final stats.'
+              ? 'Great games today! Check the Stats tab for final standings.'
               : session.queue.length >= 2
               ? 'Ready to start — go to Queue tab and tap Start Match'
               : session.teams.length === 0
@@ -226,132 +140,140 @@ export default function MatchTab({ session, onUpdate }: Props) {
         </div>
 
         {nextA && nextB && !isEnded && (
-          <div className="w-full bg-gray-800 border border-gray-700 rounded-xl p-4">
-            <p className="text-sm text-gray-400 text-center mb-3">Next up</p>
+          <div className="w-full rounded-2xl p-5" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+            <p className="text-[10px] font-bold tracking-widest uppercase text-center mb-4" style={{ color: '#3D4557' }}>Next Up</p>
             <div className="flex items-center justify-center gap-4">
-              <span className="font-black text-white text-xl">{nextA.name}</span>
-              <span className="text-gray-500 font-bold">VS</span>
-              <span className="font-black text-white text-xl">{nextB.name}</span>
+              <span className="font-display text-2xl tracking-widest text-white">{nextA.name}</span>
+              <span className="text-xs font-bold tracking-widest" style={{ color: '#3D4557' }}>VS</span>
+              <span className="font-display text-2xl tracking-widest text-white">{nextB.name}</span>
             </div>
           </div>
         )}
 
         {session.completedMatches.length > 0 && (
-          <div className="w-full text-center text-gray-500 text-sm">
+          <p className="text-xs" style={{ color: '#3D4557' }}>
             {session.completedMatches.length} match{session.completedMatches.length !== 1 ? 'es' : ''} completed today
-          </div>
+          </p>
         )}
       </div>
     );
   }
 
+  /* ── Active match ── */
   const timerPct = Math.max(0, remaining / match.timerDuration);
-  const timerColor = isExpired
-    ? '#ef4444'
-    : remaining < 60
-    ? '#f97316'
-    : '#22c55e';
+  const timerColor = isExpired ? '#EF4444' : remaining < 60 ? '#FF6B00' : '#22C55E';
+  const aLeading = match.score.teamA > match.score.teamB;
+  const bLeading = match.score.teamB > match.score.teamA;
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* Match header */}
-      <div className="text-center">
-        <p className="text-sm text-gray-400 font-semibold uppercase tracking-wider">
+    <div className="flex flex-col gap-4">
+      {/* Match number */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" style={{ boxShadow: '0 0 6px #22c55e' }} />
+          <span className="text-xs font-bold tracking-widest uppercase text-green-400">Live</span>
+        </div>
+        <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+        <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#3D4557' }}>
           Match #{session.completedMatches.length + 1}
-        </p>
+        </span>
       </div>
 
-      {/* Teams vs display */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
-        <div className="flex items-stretch gap-4">
+      {/* Scoreboard */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+        {/* Timer bar */}
+        <div className="px-5 pt-5 pb-3">
+          <div
+            className="font-display text-7xl text-center tabular-nums leading-none mb-3"
+            style={{ color: timerColor, textShadow: isExpired ? '0 0 24px rgba(239,68,68,0.4)' : 'none' }}
+          >
+            {formatTime(remaining)}
+          </div>
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${timerPct * 100}%`, background: timerColor }}
+            />
+          </div>
+          {isExpired && (
+            <p className="text-center text-xs font-bold mt-2 animate-pulse" style={{ color: timerColor }}>
+              ⏰ Time&apos;s up! Declare a winner.
+            </p>
+          )}
+        </div>
+
+        {/* Teams & scores */}
+        <div className="grid grid-cols-3 items-center px-5 py-4 gap-3" style={{ borderTop: '1px solid var(--border)' }}>
           {/* Team A */}
-          <div className="flex-1 flex flex-col items-center gap-3">
-            <div className="font-black text-white text-xl text-center">{teamA?.name}</div>
-            <div className="text-6xl font-black text-white">{match.score.teamA}</div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => adjustScore('teamA', -1)}
-                className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-bold text-xl flex items-center justify-center transition-colors"
-              >−</button>
-              <button
-                onClick={() => adjustScore('teamA', 1)}
-                className="w-10 h-10 rounded-full bg-orange-500 hover:bg-orange-400 text-white font-bold text-xl flex items-center justify-center transition-colors"
-              >+</button>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: '#3D4557' }}>Team A</p>
+            <p className="font-display text-xl tracking-wide text-white text-center leading-none">{teamA?.name}</p>
+            <p
+              className="font-display text-6xl leading-none tabular-nums"
+              style={{ color: aLeading ? 'var(--orange)' : '#fff', textShadow: aLeading ? '0 0 24px rgba(255,107,0,0.35)' : 'none' }}
+            >
+              {match.score.teamA}
+            </p>
+            <div className="flex gap-1.5">
+              <ScoreBtn onClick={() => adjustScore('teamA', -1)} color="#1E2433">−</ScoreBtn>
+              <ScoreBtn onClick={() => adjustScore('teamA', +1)} color="var(--orange)">+</ScoreBtn>
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="flex flex-col items-center justify-center gap-2">
-            <div className="text-gray-500 font-bold text-lg">VS</div>
-            <div className="w-px flex-1 bg-gray-700" />
+          {/* Center */}
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs font-black tracking-widest" style={{ color: '#3D4557' }}>VS</span>
+            <div className="w-px flex-1" style={{ background: 'var(--border)', minHeight: '40px' }} />
           </div>
 
           {/* Team B */}
-          <div className="flex-1 flex flex-col items-center gap-3">
-            <div className="font-black text-white text-xl text-center">{teamB?.name}</div>
-            <div className="text-6xl font-black text-white">{match.score.teamB}</div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => adjustScore('teamB', -1)}
-                className="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 text-white font-bold text-xl flex items-center justify-center transition-colors"
-              >−</button>
-              <button
-                onClick={() => adjustScore('teamB', 1)}
-                className="w-10 h-10 rounded-full bg-orange-500 hover:bg-orange-400 text-white font-bold text-xl flex items-center justify-center transition-colors"
-              >+</button>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: '#3D4557' }}>Team B</p>
+            <p className="font-display text-xl tracking-wide text-white text-center leading-none">{teamB?.name}</p>
+            <p
+              className="font-display text-6xl leading-none tabular-nums"
+              style={{ color: bLeading ? '#60A5FA' : '#fff', textShadow: bLeading ? '0 0 24px rgba(59,130,246,0.35)' : 'none' }}
+            >
+              {match.score.teamB}
+            </p>
+            <div className="flex gap-1.5">
+              <ScoreBtn onClick={() => adjustScore('teamB', -1)} color="#1E2433">−</ScoreBtn>
+              <ScoreBtn onClick={() => adjustScore('teamB', +1)} color="#3B82F6">+</ScoreBtn>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Timer */}
-      <div className="bg-gray-800 border border-gray-700 rounded-xl p-5 flex flex-col items-center gap-4">
-        <div
-          className="text-7xl font-black tabular-nums tracking-tight"
-          style={{ color: timerColor }}
-        >
-          {formatTime(remaining)}
-        </div>
-
-        {/* Progress bar */}
-        <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${timerPct * 100}%`, backgroundColor: timerColor }}
-          />
-        </div>
-
-        {isExpired && (
-          <div className="text-red-400 font-bold text-sm animate-pulse">⏰ Time&apos;s up! Declare a winner.</div>
-        )}
 
         {/* Timer controls */}
-        <div className="flex gap-2 w-full">
+        <div className="flex gap-2 px-5 pb-5">
           {!isStarted ? (
             <button
               onClick={handleStart}
-              className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-white font-bold text-lg transition-colors"
+              className="flex-1 py-3 rounded-xl font-bold text-base text-white uppercase tracking-wide transition-all"
+              style={{ background: '#22C55E', boxShadow: '0 4px 16px rgba(34,197,94,0.3)' }}
             >
               ▶ Start
             </button>
           ) : isRunning ? (
             <button
               onClick={handlePause}
-              className="flex-1 py-3 rounded-xl bg-yellow-500/80 hover:bg-yellow-500 text-white font-bold text-lg transition-colors"
+              className="flex-1 py-3 rounded-xl font-bold text-base text-white uppercase tracking-wide transition-all"
+              style={{ background: 'rgba(234,179,8,0.8)' }}
             >
               ⏸ Pause
             </button>
           ) : (
             <button
               onClick={handleResume}
-              className="flex-1 py-3 rounded-xl bg-green-500 hover:bg-green-400 text-white font-bold text-lg transition-colors"
+              className="flex-1 py-3 rounded-xl font-bold text-base text-white uppercase tracking-wide transition-all"
+              style={{ background: '#22C55E', boxShadow: '0 4px 16px rgba(34,197,94,0.3)' }}
             >
               ▶ Resume
             </button>
           )}
           <button
             onClick={handleReset}
-            className="px-4 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-gray-300 font-bold transition-colors"
+            className="px-4 py-3 rounded-xl font-bold text-base transition-all"
+            style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', color: '#8892A4' }}
           >
             ↺
           </button>
@@ -359,28 +281,40 @@ export default function MatchTab({ session, onUpdate }: Props) {
       </div>
 
       {/* Declare winner */}
-      <div className="flex flex-col gap-2">
-        <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">Declare Winner</p>
-        <div className="flex gap-2">
+      <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+        <p className="text-[10px] font-bold tracking-widest uppercase text-center" style={{ color: '#3D4557' }}>Declare Winner</p>
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => teamA && handleDeclareWinner(teamA.id)}
             disabled={declaring}
-            className="flex-1 py-4 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-black text-lg transition-colors"
+            className="py-4 rounded-xl font-black text-base uppercase tracking-wide transition-all disabled:opacity-50"
+            style={{ background: 'rgba(255,107,0,0.12)', border: '1.5px solid rgba(255,107,0,0.3)', color: 'var(--orange2)' }}
           >
             🏆 {teamA?.name}
           </button>
           <button
             onClick={() => teamB && handleDeclareWinner(teamB.id)}
             disabled={declaring}
-            className="flex-1 py-4 rounded-xl bg-blue-500 hover:bg-blue-400 disabled:opacity-50 text-white font-black text-lg transition-colors"
+            className="py-4 rounded-xl font-black text-base uppercase tracking-wide transition-all disabled:opacity-50"
+            style={{ background: 'rgba(59,130,246,0.1)', border: '1.5px solid rgba(59,130,246,0.25)', color: '#60A5FA' }}
           >
             🏆 {teamB?.name}
           </button>
         </div>
-        <p className="text-xs text-gray-500 text-center">
-          This will update the queue and player stats automatically
-        </p>
+        <p className="text-[10px] text-center" style={{ color: '#3D4557' }}>Updates queue and player stats automatically</p>
       </div>
     </div>
+  );
+}
+
+function ScoreBtn({ onClick, color, children }: { onClick: () => void; color: string; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-lg text-white transition-all"
+      style={{ background: color }}
+    >
+      {children}
+    </button>
   );
 }

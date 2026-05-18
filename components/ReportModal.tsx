@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Session, Match } from '@/lib/types';
 
 interface Props {
@@ -18,22 +19,10 @@ function fmtTime(secs: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
-const PODIUM_HEIGHT: Record<number, string> = { 1: '80px', 2: '56px', 3: '40px' };
-const PODIUM_COLOR: Record<number, string> = { 1: '#f59e0b', 2: '#9ca3af', 3: '#fb923c' };
-
 export default function ReportModal({ session, onClose }: Props) {
-  const matches = [...session.completedMatches].reverse();
+  const [exporting, setExporting] = useState(false);
 
-  const playerStats = session.players
-    .map((p) => ({
-      player: p,
-      wins: p.stats.wins,
-      gamesPlayed: p.stats.gamesPlayed,
-      winRate: p.stats.gamesPlayed > 0 ? p.stats.wins / p.stats.gamesPlayed : 0,
-    }))
-    .filter((ps) => ps.gamesPlayed > 0)
-    .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
+  const matches = [...session.completedMatches].reverse();
 
   const teamStats = [...session.teams]
     .filter((t) => t.stats.gamesPlayed > 0)
@@ -41,42 +30,38 @@ export default function ReportModal({ session, onClose }: Props) {
 
   const totalSecs = matches.reduce((s, m) => s + calcDuration(m), 0);
   const avgSecs = matches.length > 0 ? totalSecs / matches.length : 0;
-
   const champion = teamStats[0];
-  const mvp = playerStats[0];
-  const top3 = playerStats.slice(0, 3);
-  // podium visual order: 2nd · 1st · 3rd
-  const podiumOrder =
-    top3.length === 3
-      ? [{ ps: top3[1], place: 2 }, { ps: top3[0], place: 1 }, { ps: top3[2], place: 3 }]
-      : top3.length === 2
-      ? [{ ps: top3[1], place: 2 }, { ps: top3[0], place: 1 }]
-      : top3.map((ps, i) => ({ ps, place: i + 1 }));
 
   const dateStr = new Date(session.createdAt).toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
 
+  async function handleExportImage() {
+    setExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const el = document.getElementById('hoopup-report');
+      if (!el) return;
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hoopup-${session.settings.sessionName.replace(/\s+/g, '-')}-${session.date}.png`;
+      a.click();
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <>
-      <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          #hoopup-report, #hoopup-report * { visibility: visible !important; }
-          #hoopup-report {
-            position: fixed !important;
-            inset: 0 !important;
-            overflow: auto !important;
-            background: white !important;
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-          .no-print { display: none !important; }
-        }
-      `}</style>
-
       {/* Backdrop */}
-      <div className="no-print fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
       {/* Scroll container */}
       <div className="fixed inset-0 z-[60] overflow-y-auto">
@@ -89,7 +74,6 @@ export default function ReportModal({ session, onClose }: Props) {
               style={{ background: 'linear-gradient(135deg, #ea580c 0%, #f97316 50%, #fb923c 100%)', printColorAdjust: 'exact' }}
               className="relative px-6 pt-8 pb-7 text-white overflow-hidden"
             >
-              {/* Decorative balls */}
               <div className="absolute -right-6 -top-6 text-9xl opacity-10 select-none pointer-events-none">🏀</div>
               <div className="absolute right-10 bottom-2 text-6xl opacity-10 select-none pointer-events-none">🏀</div>
 
@@ -101,7 +85,6 @@ export default function ReportModal({ session, onClose }: Props) {
                 <span className="bg-white/15 px-2 py-0.5 rounded-full capitalize">{session.settings.tournamentType.replace(/-/g, ' ')}</span>
               </div>
 
-              {/* Hero stats */}
               <div className="grid grid-cols-3 gap-2 mt-5">
                 {[
                   { icon: '⚡', value: matches.length, label: 'Matches' },
@@ -127,7 +110,7 @@ export default function ReportModal({ session, onClose }: Props) {
                 >
                   <div className="text-5xl">🏆</div>
                   <div>
-                    <div className="text-xs font-black text-yellow-600 uppercase tracking-widest">Today's Champion</div>
+                    <div className="text-xs font-black text-yellow-600 uppercase tracking-widest">Today&apos;s Champion</div>
                     <div className="text-2xl font-black text-gray-900 mt-0.5">{champion.name}</div>
                     <div className="text-sm text-gray-500 mt-0.5">
                       {champion.stats.wins}W · {champion.stats.losses}L ·{' '}
@@ -137,114 +120,11 @@ export default function ReportModal({ session, onClose }: Props) {
                 </div>
               )}
 
-              {/* ── MVP callout ── */}
-              {mvp && (
-                <div
-                  style={{ background: 'linear-gradient(135deg, #fff7ed, #ffedd5)', printColorAdjust: 'exact' }}
-                  className="border border-orange-200 rounded-2xl p-4 flex items-center gap-4"
-                >
-                  <div className="text-5xl">⭐</div>
-                  <div>
-                    <div className="text-xs font-black text-orange-500 uppercase tracking-widest">MVP</div>
-                    <div className="text-2xl font-black text-gray-900 mt-0.5">{mvp.player.name}</div>
-                    <div className="text-sm text-gray-500 mt-0.5">
-                      {mvp.wins} wins · {mvp.gamesPlayed} games · {Math.round(mvp.winRate * 100)}% win rate
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Podium ── */}
-              {podiumOrder.length >= 2 && (
-                <div>
-                  <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-5">🎖 Top Players Podium</h2>
-                  <div className="flex items-end justify-center gap-4">
-                    {podiumOrder.map(({ ps, place }) => (
-                      <div key={ps.player.id} className="flex flex-col items-center gap-1" style={{ width: 96 }}>
-                        <div className="text-2xl">{MEDAL[place]}</div>
-                        <div className="font-black text-gray-900 text-sm text-center leading-tight">{ps.player.name}</div>
-                        <div className="text-xs text-gray-400">{ps.wins}W · {Math.round(ps.winRate * 100)}%</div>
-                        <div
-                          className="w-full rounded-t-xl flex items-center justify-center"
-                          style={{
-                            height: PODIUM_HEIGHT[place],
-                            backgroundColor: PODIUM_COLOR[place],
-                            printColorAdjust: 'exact',
-                          }}
-                        >
-                          <span className="text-white font-black text-2xl opacity-70">{place}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Player leaderboard ── */}
-              {playerStats.length > 0 && (
-                <div>
-                  <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">👥 Player Leaderboard</h2>
-                  <div className="flex flex-col gap-2">
-                    {playerStats.map((ps, idx) => {
-                      const barColor =
-                        ps.winRate >= 0.6 ? '#22c55e' : ps.winRate >= 0.4 ? '#eab308' : '#ef4444';
-                      const bg =
-                        idx === 0 ? '#fefce8' : idx === 1 ? '#f9fafb' : idx === 2 ? '#fff7ed' : '#f9fafb';
-                      const rankBg =
-                        idx === 0 ? '#f59e0b' : idx === 1 ? '#9ca3af' : idx === 2 ? '#fb923c' : '#e5e7eb';
-                      const rankColor = idx < 3 ? '#fff' : '#6b7280';
-
-                      return (
-                        <div
-                          key={ps.player.id}
-                          className="flex items-center gap-3 p-3 rounded-xl"
-                          style={{ backgroundColor: bg, printColorAdjust: 'exact' }}
-                        >
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0"
-                            style={{ backgroundColor: rankBg, color: rankColor, printColorAdjust: 'exact' }}
-                          >
-                            {idx + 1}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="font-black text-gray-900 text-sm">{ps.player.name}</div>
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div
-                                  className="h-full rounded-full"
-                                  style={{
-                                    width: `${Math.round(ps.winRate * 100)}%`,
-                                    backgroundColor: barColor,
-                                    printColorAdjust: 'exact',
-                                  }}
-                                />
-                              </div>
-                              <span className="text-xs text-gray-500 w-8 text-right flex-shrink-0">
-                                {Math.round(ps.winRate * 100)}%
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="text-right flex-shrink-0">
-                            <div className="font-black text-gray-900 text-sm">
-                              {ps.wins}W{' '}
-                              <span className="font-normal text-gray-400 text-xs">/ {ps.gamesPlayed}G</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
               {/* ── Team standings ── */}
               {teamStats.length > 0 && (
                 <div>
                   <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">🏀 Team Standings</h2>
                   <div className="rounded-2xl overflow-hidden border border-gray-100">
-                    {/* Table header */}
                     <div
                       className="grid grid-cols-12 gap-2 px-4 py-2 text-xs font-black text-gray-400 uppercase tracking-wider"
                       style={{ backgroundColor: '#f9fafb', printColorAdjust: 'exact' }}
@@ -263,10 +143,7 @@ export default function ReportModal({ session, onClose }: Props) {
                         <div
                           key={team.id}
                           className="grid grid-cols-12 gap-2 px-4 py-3 items-center border-t border-gray-100"
-                          style={{
-                            backgroundColor: idx === 0 ? '#fff7ed' : 'white',
-                            printColorAdjust: 'exact',
-                          }}
+                          style={{ backgroundColor: idx === 0 ? '#fff7ed' : 'white', printColorAdjust: 'exact' }}
                         >
                           <div className="col-span-1 text-sm font-black text-gray-400">{idx + 1}</div>
                           <div className="col-span-5 font-black text-gray-900 text-sm flex items-center gap-1">
@@ -317,36 +194,18 @@ export default function ReportModal({ session, onClose }: Props) {
                           <span className="text-xs font-bold text-gray-400 w-10 flex-shrink-0">#{match.round}</span>
 
                           <div className="flex-1 flex items-center gap-2">
-                            <span
-                              className="flex-1 text-right text-sm font-black"
-                              style={{ color: aWon ? '#16a34a' : '#9ca3af' }}
-                            >
+                            <span className="flex-1 text-right text-sm font-black" style={{ color: aWon ? '#16a34a' : '#9ca3af' }}>
                               {tA?.name ?? '—'}
                             </span>
-
                             <div
                               className="flex items-center gap-1 px-3 py-1 rounded-xl flex-shrink-0"
                               style={{ backgroundColor: '#1f2937', printColorAdjust: 'exact' }}
                             >
-                              <span
-                                className="text-base font-black"
-                                style={{ color: aWon ? '#4ade80' : 'white' }}
-                              >
-                                {match.score.teamA}
-                              </span>
+                              <span className="text-base font-black" style={{ color: aWon ? '#4ade80' : 'white' }}>{match.score.teamA}</span>
                               <span className="text-gray-500 text-xs mx-0.5">:</span>
-                              <span
-                                className="text-base font-black"
-                                style={{ color: bWon ? '#4ade80' : 'white' }}
-                              >
-                                {match.score.teamB}
-                              </span>
+                              <span className="text-base font-black" style={{ color: bWon ? '#4ade80' : 'white' }}>{match.score.teamB}</span>
                             </div>
-
-                            <span
-                              className="flex-1 text-sm font-black"
-                              style={{ color: bWon ? '#16a34a' : '#9ca3af' }}
-                            >
+                            <span className="flex-1 text-sm font-black" style={{ color: bWon ? '#16a34a' : '#9ca3af' }}>
                               {tB?.name ?? '—'}
                             </span>
                           </div>
@@ -361,13 +220,21 @@ export default function ReportModal({ session, onClose }: Props) {
                 </div>
               )}
 
-              {/* ── Footer ── */}
-              <div className="flex items-center justify-center gap-2 pt-4 border-t border-gray-100">
-                <span className="text-2xl">🏀</span>
-                <div className="text-center">
-                  <div className="text-xs font-black text-gray-400 uppercase tracking-widest">HoopUp</div>
-                  <div className="text-xs text-gray-300">Generated {new Date().toLocaleDateString()}</div>
+              {/* ── Footer / Ad ── */}
+              <div className="flex flex-col items-center gap-1.5 pt-4 border-t border-gray-100">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🏀</span>
+                  <span className="text-lg font-black text-gray-800">HoopUp</span>
                 </div>
+                <p className="text-xs text-gray-400">Pickup basketball, organised.</p>
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full mt-0.5"
+                  style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', printColorAdjust: 'exact' }}
+                >
+                  <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Try it free →</span>
+                  <span className="text-[10px] font-bold text-orange-400">hoopup-gang.vercel.app</span>
+                </div>
+                <p className="text-[10px] text-gray-300 mt-1">Generated {new Date().toLocaleDateString()}</p>
               </div>
 
             </div>
@@ -376,12 +243,14 @@ export default function ReportModal({ session, onClose }: Props) {
       </div>
 
       {/* Floating action buttons */}
-      <div className="no-print fixed bottom-6 left-0 right-0 z-[70] flex justify-center gap-3 px-4">
+      <div className="fixed bottom-6 left-0 right-0 z-[70] flex justify-center gap-3 px-4">
         <button
-          onClick={() => window.print()}
-          className="bg-orange-500 hover:bg-orange-400 active:bg-orange-600 text-white font-black px-7 py-4 rounded-2xl shadow-2xl shadow-orange-500/40 text-base transition-colors"
+          onClick={handleExportImage}
+          disabled={exporting}
+          className="text-white font-black px-7 py-4 rounded-2xl shadow-2xl text-base transition-colors disabled:opacity-60"
+          style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 8px 24px rgba(255,107,0,0.4)' }}
         >
-          📄 Export PDF
+          {exporting ? '⏳ Exporting...' : '🖼 Save as Image'}
         </button>
         <button
           onClick={onClose}

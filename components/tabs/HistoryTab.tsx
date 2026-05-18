@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Session, Match, PlayerStats } from '@/lib/types';
+import { Session, Match } from '@/lib/types';
 import { getPositionColor } from '@/lib/matching';
 import ReportModal from '@/components/ReportModal';
 
@@ -85,11 +85,6 @@ export default function HistoryTab({ session }: Props) {
   const [showReport, setShowReport] = useState(false);
   const matches = session.completedMatches;
 
-  const playerStats: PlayerStats[] = session.players
-    .map((player) => ({ player, wins: player.stats.wins, gamesPlayed: player.stats.gamesPlayed, winRate: player.stats.gamesPlayed > 0 ? player.stats.wins / player.stats.gamesPlayed : 0 }))
-    .filter((ps) => ps.gamesPlayed > 0)
-    .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate);
-
   const teamStats = [...session.teams].filter((t) => t.stats.gamesPlayed > 0).sort((a, b) => b.stats.wins - a.stats.wins);
   const mostWinsTeam = teamStats[0];
   const avgMatchDuration = matches.length > 0
@@ -99,7 +94,7 @@ export default function HistoryTab({ session }: Props) {
       }, 0) / matches.length
     : 0;
 
-  if (matches.length === 0 && session.players.every((p) => p.stats.gamesPlayed === 0)) {
+  if (matches.length === 0 && teamStats.length === 0) {
     return (
       <div className="flex flex-col items-center py-14" style={{ color: '#3D4557' }}>
         <div className="text-5xl mb-3">📊</div>
@@ -117,7 +112,7 @@ export default function HistoryTab({ session }: Props) {
           className="w-full flex items-center justify-center gap-2 text-white font-bold py-4 rounded-2xl transition-all uppercase tracking-wide"
           style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 6px 20px rgba(255,107,0,0.3)' }}
         >
-          📄 Generate Session Report
+          🖼 Export Session Report
         </button>
       )}
 
@@ -146,45 +141,6 @@ export default function HistoryTab({ session }: Props) {
               </span>
             </div>
           )}
-        </div>
-      )}
-
-      {/* Player leaderboard */}
-      {playerStats.length > 0 && (
-        <div>
-          <SectionLabel>Player Leaderboard</SectionLabel>
-          <div className="flex flex-col gap-2 mt-2">
-            {playerStats.map((ps, idx) => {
-              const rankStyle =
-                idx === 0 ? { background: '#CA8A04', color: '#000' } :
-                idx === 1 ? { background: '#9CA3AF', color: '#000' } :
-                idx === 2 ? { background: '#B45309', color: '#fff' } :
-                { background: 'var(--surface)', color: '#8892A4' };
-              return (
-                <div key={ps.player.id} className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black flex-shrink-0" style={rankStyle}>
-                    {idx + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-white text-sm truncate">{ps.player.name}</div>
-                    <div className="flex flex-wrap gap-1 mt-0.5">
-                      {ps.player.positions.map((pos) => (
-                        <span key={pos} className={`${getPositionColor(pos)} text-white text-[9px] font-bold px-1.5 py-0.5 rounded`}>{pos}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className="font-black text-white text-sm">
-                      {ps.wins}W <span className="font-normal" style={{ color: '#3D4557' }}>/ {ps.gamesPlayed}G</span>
-                    </div>
-                    <div className="font-bold text-sm" style={{ color: ps.winRate >= 0.6 ? '#4ADE80' : ps.winRate >= 0.4 ? '#FBBF24' : '#F87171' }}>
-                      {Math.round(ps.winRate * 100)}%
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 

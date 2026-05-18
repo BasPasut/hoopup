@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Session, Team, Match } from '@/lib/types';
 import { createBalancedTeams, extractTeamCompositions, computeTeamSkill, getPositionColor } from '@/lib/matching';
 
@@ -241,6 +241,42 @@ export default function QueueTab({ session, onUpdate }: Props) {
   const [showCustomBuilder, setShowCustomBuilder] = useState(false);
   const [editingTimer, setEditingTimer] = useState(false);
   const [timerMinutes, setTimerMinutes] = useState(Math.round(session.settings.timerDuration / 60));
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+  const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  function getHoverIdx(clientY: number): number {
+    const refs = rowRefs.current;
+    for (let i = 0; i < refs.length; i++) {
+      const el = refs[i];
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) return i;
+    }
+    return refs.length - 1;
+  }
+
+  function handleDragPointerDown(idx: number, e: React.PointerEvent<HTMLButtonElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDraggingIdx(idx);
+    setOverIdx(idx);
+  }
+
+  function handleDragPointerMove(e: React.PointerEvent<HTMLButtonElement>) {
+    if (draggingIdx === null) return;
+    setOverIdx(getHoverIdx(e.clientY));
+  }
+
+  async function handleDragPointerUp() {
+    if (draggingIdx !== null && overIdx !== null && draggingIdx !== overIdx) {
+      const newQueue = [...session.queue];
+      const [removed] = newQueue.splice(draggingIdx, 1);
+      newQueue.splice(overIdx, 0, removed);
+      await onUpdate({ queue: newQueue });
+    }
+    setDraggingIdx(null);
+    setOverIdx(null);
+  }
 
   const queuedTeams = session.queue.map((id) => session.teams.find((t) => t.id === id)).filter(Boolean) as Team[];
   const restingTeams = session.teams.filter((t) => t.isResting);
@@ -297,25 +333,9 @@ export default function QueueTab({ session, onUpdate }: Props) {
     await onUpdate({ currentMatch: newMatch, queue: restQueue.map((t) => t.id) });
   }
 
-  async function moveTeamUp(teamId: string) {
-    const idx = session.queue.indexOf(teamId);
-    if (idx <= 0) return;
-    const newQueue = [...session.queue];
-    [newQueue[idx - 1], newQueue[idx]] = [newQueue[idx], newQueue[idx - 1]];
-    await onUpdate({ queue: newQueue });
-  }
-
   async function handleRenameTeam(teamId: string, newName: string) {
     const updatedTeams = session.teams.map((t) => t.id === teamId ? { ...t, name: newName } : t);
     await onUpdate({ teams: updatedTeams });
-  }
-
-  async function moveTeamDown(teamId: string) {
-    const idx = session.queue.indexOf(teamId);
-    if (idx === -1 || idx >= session.queue.length - 1) return;
-    const newQueue = [...session.queue];
-    [newQueue[idx], newQueue[idx + 1]] = [newQueue[idx + 1], newQueue[idx]];
-    await onUpdate({ queue: newQueue });
   }
 
   const tournamentDesc: Record<string, string> = {
@@ -393,27 +413,49 @@ export default function QueueTab({ session, onUpdate }: Props) {
             )}
           </div>
           <div className="flex flex-col gap-2">
-            {queuedTeams.map((team, idx) => (
-              <div key={team.id} className="flex items-stretch gap-2">
-                <div className="flex flex-col gap-1">
-                  <button onClick={() => moveTeamUp(team.id)} disabled={idx === 0} className="flex-1 px-2 rounded-lg text-sm transition-colors disabled:opacity-20" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: '#8892A4' }}>↑</button>
-                  <button onClick={() => moveTeamDown(team.id)} disabled={idx === queuedTeams.length - 1} className="flex-1 px-2 rounded-lg text-sm transition-colors disabled:opacity-20" style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: '#8892A4' }}>↓</button>
+            {queuedTeams.map((team, idx) => {
+              const isDragging = draggingIdx === idx;
+              const isOver = overIdx === idx && draggingIdx !== null && draggingIdx !== idx;
+              const insertAbove = isOver && overIdx !== null && draggingIdx !== null && overIdx <= draggingIdx;
+              const insertBelow = isOver && overIdx !== null && draggingIdx !== null && overIdx > draggingIdx;
+              return (
+                <div
+                  key={team.id}
+                  ref={(el) => { rowRefs.current[idx] = el; }}
+                  className="flex items-stretch gap-2 transition-all duration-150"
+                  style={{
+                    opacity: isDragging ? 0.35 : 1,
+                    borderTop: insertAbove ? '2px solid var(--orange)' : '2px solid transparent',
+                    borderBottom: insertBelow ? '2px solid var(--orange)' : '2px solid transparent',
+                  }}
+                >
+                  <button
+                    style={{ touchAction: 'none', cursor: draggingIdx !== null ? 'grabbing' : 'grab', background: 'var(--surface)', border: '1px solid var(--border)', color: '#3D4557' }}
+                    className="flex items-center justify-center w-8 rounded-lg text-lg select-none flex-shrink-0"
+                    onPointerDown={(e) => handleDragPointerDown(idx, e)}
+                    onPointerMove={handleDragPointerMove}
+                    onPointerUp={handleDragPointerUp}
+                    onPointerCancel={handleDragPointerUp}
+                    title="Drag to reorder"
+                  >
+                    ⠿
+                  </button>
+                  <div className="flex-1">
+                    <TeamCard
+                      team={team} session={session} rank={idx + 1}
+                      onRename={(name) => handleRenameTeam(team.id, name)}
+                      badge={
+                        idx === 0 && !session.currentMatch
+                          ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ADE80' }}>Next Up</span>
+                          : idx === 1 && !session.currentMatch
+                          ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)', color: '#60A5FA' }}>On Deck</span>
+                          : undefined
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <TeamCard
-                    team={team} session={session} rank={idx + 1}
-                    onRename={(name) => handleRenameTeam(team.id, name)}
-                    badge={
-                      idx === 0 && !session.currentMatch
-                        ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', color: '#4ADE80' }}>Next Up</span>
-                        : idx === 1 && !session.currentMatch
-                        ? <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.25)', color: '#60A5FA' }}>On Deck</span>
-                        : undefined
-                    }
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

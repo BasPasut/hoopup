@@ -108,12 +108,16 @@ export default function MatchTab({ session, onUpdate }: Props) {
       return t;
     });
 
-    let newQueue = [...session.queue];
     const winnerFinal = processedTeams.find((t) => t.id === winnerId)!;
-    if (!winnerFinal.isResting) newQueue = [winnerId, ...newQueue];
-    // Teams returning from rest challenge next, before the loser re-queues
+    // Teams returning from rest challenge the winner next (King of Court rule)
     const justCameBack = processedTeams.filter((t) => !t.isResting && updatedTeamsMap.get(t.id)?.isResting && t.id !== winnerId);
-    newQueue = [...newQueue, ...justCameBack.map((t) => t.id), loserTeam.id];
+    const restQueue = [...session.queue];
+    let newQueue: string[];
+    if (!winnerFinal.isResting) {
+      newQueue = [winnerId, ...justCameBack.map((t) => t.id), ...restQueue, loserTeam.id];
+    } else {
+      newQueue = [...justCameBack.map((t) => t.id), ...restQueue, loserTeam.id];
+    }
 
     await onUpdate({ teams: processedTeams, players: updatedPlayers, currentMatch: null, queue: newQueue, completedMatches: [completedMatch, ...session.completedMatches] });
     setDeclaring(false);

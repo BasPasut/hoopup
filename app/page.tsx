@@ -26,7 +26,7 @@ export default function Home() {
   const [tournamentType, setTournamentType] = useState<TournamentType>('king-of-court');
   const [timerMinutes, setTimerMinutes] = useState(8);
   const [winsToRest, setWinsToRest] = useState(2);
-  const [restRounds, setRestRounds] = useState(2);
+  const [restRounds, setRestRounds] = useState(1);
   const [scoreMode, setScoreMode] = useState<ScoreMode>('1-2');
   const [scoreToWinEnabled, setScoreToWinEnabled] = useState(false);
   const [scoreToWin, setScoreToWin] = useState(11);

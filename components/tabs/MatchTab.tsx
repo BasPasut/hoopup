@@ -111,9 +111,43 @@ export default function MatchTab({ session, onUpdate }: Props) {
     let newQueue = [...session.queue];
     const winnerFinal = processedTeams.find((t) => t.id === winnerId)!;
     if (!winnerFinal.isResting) newQueue = [winnerId, ...newQueue];
-    newQueue = [...newQueue, loserTeam.id];
+    // Teams returning from rest challenge next, before the loser re-queues
     const justCameBack = processedTeams.filter((t) => !t.isResting && updatedTeamsMap.get(t.id)?.isResting && t.id !== winnerId);
-    newQueue = [...newQueue, ...justCameBack.map((t) => t.id)];
+    newQueue = [...newQueue, ...justCameBack.map((t) => t.id), loserTeam.id];
+
+    await onUpdate({ teams: processedTeams, players: updatedPlayers, currentMatch: null, queue: newQueue, completedMatches: [completedMatch, ...session.completedMatches] });
+    setDeclaring(false);
+  }
+
+  async function handleDeclareDraw() {
+    if (!match || declaring) return;
+    setDeclaring(true);
+
+    // Both teams lose, neither gets a win, consecutive wins reset
+    const playingIds = [match.teamAId, match.teamBId];
+    const updatedTeams = session.teams.map((team) => {
+      if (!playingIds.includes(team.id)) return team;
+      return { ...team, consecutiveWins: 0, stats: { ...team.stats, losses: team.stats.losses + 1, gamesPlayed: team.stats.gamesPlayed + 1 } };
+    });
+
+    const updatedPlayers = session.players.map((player) => {
+      const onCourt = [...(teamA?.playerIds ?? []), ...(teamB?.playerIds ?? [])].includes(player.id);
+      if (!onCourt) return player;
+      return { ...player, stats: { ...player.stats, gamesPlayed: player.stats.gamesPlayed + 1 } };
+    });
+
+    const completedMatch: Match = { ...match, endedAt: new Date().toISOString(), winnerId: null };
+    const updatedTeamsMap = new Map(updatedTeams.map((t) => [t.id, t]));
+
+    // All resting teams get decremented (no winner to skip)
+    const processedTeams = updatedTeams.map((t) => {
+      if (t.isResting) { const newRest = t.restRoundsLeft - 1; return { ...t, restRoundsLeft: newRest, isResting: newRest > 0 }; }
+      return t;
+    });
+
+    const justCameBack = processedTeams.filter((t) => !t.isResting && updatedTeamsMap.get(t.id)?.isResting);
+    // Both draw teams go to back — justCameBack challengers go first
+    const newQueue = [...session.queue, ...justCameBack.map((t) => t.id), match.teamAId, match.teamBId];
 
     await onUpdate({ teams: processedTeams, players: updatedPlayers, currentMatch: null, queue: newQueue, completedMatches: [completedMatch, ...session.completedMatches] });
     setDeclaring(false);
@@ -300,28 +334,46 @@ export default function MatchTab({ session, onUpdate }: Props) {
       </div>
 
       {/* Declare winner */}
-      <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
-        <p className="text-[10px] font-bold tracking-widest uppercase text-center" style={{ color: '#3D4557' }}>Declare Winner</p>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => teamA && handleDeclareWinner(teamA.id)}
-            disabled={declaring}
-            className="py-4 rounded-xl font-black text-base uppercase tracking-wide transition-all disabled:opacity-50"
-            style={{ background: 'rgba(255,107,0,0.12)', border: '1.5px solid rgba(255,107,0,0.3)', color: 'var(--orange2)' }}
-          >
-            🏆 {teamA?.name}
-          </button>
-          <button
-            onClick={() => teamB && handleDeclareWinner(teamB.id)}
-            disabled={declaring}
-            className="py-4 rounded-xl font-black text-base uppercase tracking-wide transition-all disabled:opacity-50"
-            style={{ background: 'rgba(59,130,246,0.1)', border: '1.5px solid rgba(59,130,246,0.25)', color: '#60A5FA' }}
-          >
-            🏆 {teamB?.name}
-          </button>
-        </div>
-        <p className="text-[10px] text-center" style={{ color: '#3D4557' }}>Updates queue and player stats automatically</p>
-      </div>
+      {(() => {
+        const isTied = match.score.teamA === match.score.teamB;
+        const drawHighlight = isExpired && isTied;
+        return (
+          <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+            <p className="text-[10px] font-bold tracking-widest uppercase text-center" style={{ color: '#3D4557' }}>Declare Result</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => teamA && handleDeclareWinner(teamA.id)}
+                disabled={declaring}
+                className="py-4 rounded-xl font-black text-base uppercase tracking-wide transition-all disabled:opacity-50"
+                style={{ background: 'rgba(255,107,0,0.12)', border: '1.5px solid rgba(255,107,0,0.3)', color: 'var(--orange2)' }}
+              >
+                🏆 {teamA?.name}
+              </button>
+              <button
+                onClick={() => teamB && handleDeclareWinner(teamB.id)}
+                disabled={declaring}
+                className="py-4 rounded-xl font-black text-base uppercase tracking-wide transition-all disabled:opacity-50"
+                style={{ background: 'rgba(59,130,246,0.1)', border: '1.5px solid rgba(59,130,246,0.25)', color: '#60A5FA' }}
+              >
+                🏆 {teamB?.name}
+              </button>
+            </div>
+            <button
+              onClick={handleDeclareDraw}
+              disabled={declaring}
+              className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-wide transition-all disabled:opacity-50 ${drawHighlight ? 'animate-pulse' : ''}`}
+              style={
+                drawHighlight
+                  ? { background: 'rgba(234,179,8,0.15)', border: '1.5px solid rgba(234,179,8,0.5)', color: '#FBBF24', boxShadow: '0 0 16px rgba(234,179,8,0.2)' }
+                  : { background: 'var(--surface)', border: '1.5px solid var(--border)', color: '#8892A4' }
+              }
+            >
+              🤝 Declare Draw {drawHighlight ? '— Scores Tied!' : ''}
+            </button>
+            <p className="text-[10px] text-center" style={{ color: '#3D4557' }}>Updates queue and player stats automatically</p>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -183,6 +183,7 @@ export default function ReportModal({ session, onClose }: Props) {
                       const tB = session.teams.find((t) => t.id === match.teamBId);
                       const aWon = match.winnerId === match.teamAId;
                       const bWon = match.winnerId === match.teamBId;
+                      const isDraw = match.endedAt !== null && match.winnerId === null;
                       const dur = calcDuration(match);
 
                       return (
@@ -194,18 +195,18 @@ export default function ReportModal({ session, onClose }: Props) {
                           <span className="text-xs font-bold text-gray-400 w-10 flex-shrink-0">#{match.round}</span>
 
                           <div className="flex-1 flex items-center gap-2">
-                            <span className="flex-1 text-right text-sm font-black" style={{ color: aWon ? '#16a34a' : '#9ca3af' }}>
+                            <span className="flex-1 text-right text-sm font-black" style={{ color: aWon ? '#16a34a' : isDraw ? '#d97706' : '#9ca3af' }}>
                               {tA?.name ?? '—'}
                             </span>
                             <div
                               className="flex items-center gap-1 px-3 py-1 rounded-xl flex-shrink-0"
-                              style={{ backgroundColor: '#1f2937', printColorAdjust: 'exact' }}
+                              style={{ backgroundColor: isDraw ? '#78350f' : '#1f2937', printColorAdjust: 'exact' }}
                             >
-                              <span className="text-base font-black" style={{ color: aWon ? '#4ade80' : 'white' }}>{match.score.teamA}</span>
-                              <span className="text-gray-500 text-xs mx-0.5">:</span>
-                              <span className="text-base font-black" style={{ color: bWon ? '#4ade80' : 'white' }}>{match.score.teamB}</span>
+                              <span className="text-base font-black" style={{ color: aWon ? '#4ade80' : isDraw ? '#fbbf24' : 'white' }}>{match.score.teamA}</span>
+                              <span className="text-gray-500 text-xs mx-0.5">{isDraw ? '=' : ':'}</span>
+                              <span className="text-base font-black" style={{ color: bWon ? '#4ade80' : isDraw ? '#fbbf24' : 'white' }}>{match.score.teamB}</span>
                             </div>
-                            <span className="flex-1 text-sm font-black" style={{ color: bWon ? '#16a34a' : '#9ca3af' }}>
+                            <span className="flex-1 text-sm font-black" style={{ color: bWon ? '#16a34a' : isDraw ? '#d97706' : '#9ca3af' }}>
                               {tB?.name ?? '—'}
                             </span>
                           </div>

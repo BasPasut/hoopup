@@ -27,6 +27,7 @@ function MatchCard({ match, session }: { match: Match; session: Session }) {
 
   const aWon = match.winnerId === teamA?.id;
   const bWon = match.winnerId === teamB?.id;
+  const isDraw = match.endedAt !== null && match.winnerId === null;
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
@@ -40,11 +41,12 @@ function MatchCard({ match, session }: { match: Match; session: Session }) {
       <div className="grid grid-cols-3 items-center p-4 gap-3">
         <div
           className="text-center p-3 rounded-xl"
-          style={aWon ? { background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' } : { background: 'var(--surface)' }}
+          style={aWon ? { background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' } : isDraw ? { background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.2)' } : { background: 'var(--surface)' }}
         >
-          <div className="font-display text-lg tracking-widest leading-none" style={{ color: aWon ? '#4ADE80' : '#8892A4' }}>{teamA?.name ?? '—'}</div>
+          <div className="font-display text-lg tracking-widest leading-none" style={{ color: aWon ? '#4ADE80' : isDraw ? '#FBBF24' : '#8892A4' }}>{teamA?.name ?? '—'}</div>
           <div className="font-display text-4xl text-white mt-2 tabular-nums">{match.score.teamA}</div>
           {aWon && <div className="text-[10px] font-bold mt-1.5 text-green-400">🏆 WIN</div>}
+          {isDraw && <div className="text-[10px] font-bold mt-1.5 text-yellow-400">🤝 DRAW</div>}
         </div>
 
         <div className="text-center">
@@ -53,11 +55,12 @@ function MatchCard({ match, session }: { match: Match; session: Session }) {
 
         <div
           className="text-center p-3 rounded-xl"
-          style={bWon ? { background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' } : { background: 'var(--surface)' }}
+          style={bWon ? { background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' } : isDraw ? { background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.2)' } : { background: 'var(--surface)' }}
         >
-          <div className="font-display text-lg tracking-widest leading-none" style={{ color: bWon ? '#4ADE80' : '#8892A4' }}>{teamB?.name ?? '—'}</div>
+          <div className="font-display text-lg tracking-widest leading-none" style={{ color: bWon ? '#4ADE80' : isDraw ? '#FBBF24' : '#8892A4' }}>{teamB?.name ?? '—'}</div>
           <div className="font-display text-4xl text-white mt-2 tabular-nums">{match.score.teamB}</div>
           {bWon && <div className="text-[10px] font-bold mt-1.5 text-green-400">🏆 WIN</div>}
+          {isDraw && <div className="text-[10px] font-bold mt-1.5 text-yellow-400">🤝 DRAW</div>}
         </div>
       </div>
 

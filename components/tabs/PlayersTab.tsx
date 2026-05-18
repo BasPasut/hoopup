@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Session, Player, Position } from '@/lib/types';
 import { getPositionColor } from '@/lib/matching';
 
@@ -79,6 +79,19 @@ export default function PlayersTab({ session, onUpdate }: Props) {
   const [showDevPanel, setShowDevPanel] = useState(false);
   const [devCount, setDevCount] = useState(10);
   const [devAdding, setDevAdding] = useState(false);
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleSecretTap() {
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    if (tapCountRef.current >= 5) {
+      tapCountRef.current = 0;
+      setShowDevPanel((v) => !v);
+      return;
+    }
+    tapTimerRef.current = setTimeout(() => { tapCountRef.current = 0; }, 1500);
+  }
 
   async function handleDevAdd() {
     setDevAdding(true);
@@ -139,7 +152,7 @@ export default function PlayersTab({ session, onUpdate }: Props) {
             key={label}
             className="rounded-xl p-3 text-center"
             style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
-            onDoubleClick={label === 'Total' ? () => setShowDevPanel((v) => !v) : undefined}
+            onClick={label === 'Total' ? handleSecretTap : undefined}
           >
             <div className="font-display text-3xl leading-none" style={{ color }}>{value}</div>
             <div className="text-[10px] font-bold tracking-widest uppercase mt-1" style={{ color: '#3D4557' }}>{label}</div>

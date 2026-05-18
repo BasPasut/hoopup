@@ -6,7 +6,7 @@ import { GameMode, TournamentType, ScoreMode } from '@/lib/types';
 
 const GAME_MODES: GameMode[] = ['3v3', '4v4', '5v5'];
 const TOURNAMENT_TYPES: { value: TournamentType; label: string; desc: string; icon: string }[] = [
-  { value: 'king-of-court', icon: '👑', label: 'King of the Court', desc: 'Winner stays. Win 2 in a row → sit out 1 round.' },
+  { value: 'king-of-court', icon: '👑', label: 'King of the Court', desc: 'Winner stays. Win streak triggers a rest. Fully configurable.' },
   { value: 'round-robin',   icon: '🔄', label: 'Round Robin',        desc: 'Every team plays every other team once.' },
   { value: 'elimination',   icon: '⚡', label: 'Single Elimination', desc: "Lose once and you're out. Classic bracket." },
 ];
@@ -26,6 +26,7 @@ export default function Home() {
   const [tournamentType, setTournamentType] = useState<TournamentType>('king-of-court');
   const [timerMinutes, setTimerMinutes] = useState(8);
   const [winsToRest, setWinsToRest] = useState(2);
+  const [restRounds, setRestRounds] = useState(2);
   const [scoreMode, setScoreMode] = useState<ScoreMode>('1-2');
   const [scoreToWinEnabled, setScoreToWinEnabled] = useState(false);
   const [scoreToWin, setScoreToWin] = useState(11);
@@ -42,7 +43,7 @@ export default function Home() {
           tournamentType,
           timerDuration: timerMinutes * 60,
           consecutiveWinsToRest: winsToRest,
-          restRounds: 1,
+          restRounds: restRounds,
           scoreMode,
           scoreToWin: scoreToWinEnabled ? scoreToWin : null,
         }),
@@ -344,16 +345,28 @@ export default function Home() {
         </div>
 
         {tournamentType === 'king-of-court' && (
-          <div className="flex flex-col gap-2">
-            <SectionLabel>Wins Before Rest</SectionLabel>
-            <div className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
-              <Stepper onClick={() => setWinsToRest((v) => Math.max(1, v - 1))}>−</Stepper>
-              <span className="flex-1 text-center text-3xl font-black text-white tabular-nums">
-                {winsToRest} <span className="text-base font-semibold" style={{ color: '#8892A4' }}>WINS</span>
-              </span>
-              <Stepper onClick={() => setWinsToRest((v) => Math.min(5, v + 1))}>+</Stepper>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
+              <SectionLabel>Wins Before Rest</SectionLabel>
+              <div className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+                <Stepper onClick={() => setWinsToRest((v) => Math.max(1, v - 1))}>−</Stepper>
+                <span className="flex-1 text-center text-3xl font-black text-white tabular-nums">
+                  {winsToRest} <span className="text-base font-semibold" style={{ color: '#8892A4' }}>WINS</span>
+                </span>
+                <Stepper onClick={() => setWinsToRest((v) => Math.min(5, v + 1))}>+</Stepper>
+              </div>
             </div>
-            <p className="text-xs" style={{ color: '#3D4557' }}>After {winsToRest} consecutive wins, team sits out 1 round</p>
+            <div className="flex flex-col gap-2">
+              <SectionLabel>Rest Duration</SectionLabel>
+              <div className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+                <Stepper onClick={() => setRestRounds((v) => Math.max(1, v - 1))}>−</Stepper>
+                <span className="flex-1 text-center text-3xl font-black text-white tabular-nums">
+                  {restRounds} <span className="text-base font-semibold" style={{ color: '#8892A4' }}>{restRounds === 1 ? 'GAME' : 'GAMES'}</span>
+                </span>
+                <Stepper onClick={() => setRestRounds((v) => Math.min(5, v + 1))}>+</Stepper>
+              </div>
+              <p className="text-xs" style={{ color: '#3D4557' }}>After {winsToRest} consecutive wins, team sits out {restRounds} {restRounds === 1 ? 'game' : 'games'}</p>
+            </div>
           </div>
         )}
 

@@ -319,7 +319,7 @@ export default function QueueTab({ session, onUpdate }: Props) {
   }
 
   const tournamentDesc: Record<string, string> = {
-    'king-of-court': `👑 King of the Court — Winner stays. After ${session.settings.consecutiveWinsToRest} consecutive wins, sit out 1 round.`,
+    'king-of-court': `👑 King of the Court — Winner stays. After ${session.settings.consecutiveWinsToRest} consecutive wins, sit out ${session.settings.restRounds} ${session.settings.restRounds === 1 ? 'game' : 'games'}.`,
     'round-robin':   '🔄 Round Robin — Every team plays every other team.',
     'elimination':   '⚡ Single Elimination — Lose once, you\'re out.',
   };

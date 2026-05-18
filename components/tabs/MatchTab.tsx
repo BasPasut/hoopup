@@ -206,7 +206,6 @@ export default function MatchTab({ session, onUpdate }: Props) {
         <div className="grid grid-cols-3 items-center px-5 py-4 gap-3" style={{ borderTop: '1px solid var(--border)' }}>
           {/* Team A */}
           <div className="flex flex-col items-center gap-2">
-            <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: '#3D4557' }}>Team A</p>
             <p className="font-display text-xl tracking-wide text-white text-center leading-none">{teamA?.name}</p>
             <p
               className="font-display text-6xl leading-none tabular-nums"
@@ -228,7 +227,6 @@ export default function MatchTab({ session, onUpdate }: Props) {
 
           {/* Team B */}
           <div className="flex flex-col items-center gap-2">
-            <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: '#3D4557' }}>Team B</p>
             <p className="font-display text-xl tracking-wide text-white text-center leading-none">{teamB?.name}</p>
             <p
               className="font-display text-6xl leading-none tabular-nums"

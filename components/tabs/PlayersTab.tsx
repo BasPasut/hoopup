@@ -152,7 +152,7 @@ export default function PlayersTab({ session, onUpdate }: Props) {
             key={label}
             className="rounded-xl p-3 text-center"
             style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
-            onClick={label === 'Total' ? handleSecretTap : undefined}
+            onClick={undefined}
           >
             <div className="font-display text-3xl leading-none" style={{ color }}>{value}</div>
             <div className="text-[10px] font-bold tracking-widest uppercase mt-1" style={{ color: '#3D4557' }}>{label}</div>
@@ -287,7 +287,7 @@ export default function PlayersTab({ session, onUpdate }: Props) {
 
       {session.players.length === 0 && !showForm && (
         <div className="flex flex-col items-center py-14" style={{ color: '#3D4557' }}>
-          <div className="text-5xl mb-3">👥</div>
+          <div className="text-5xl mb-3 cursor-default select-none" onDoubleClick={() => setShowDevPanel((v) => !v)}>👥</div>
           <p className="text-base font-bold">No players yet</p>
           <p className="text-sm mt-1">Add players to get started</p>
         </div>

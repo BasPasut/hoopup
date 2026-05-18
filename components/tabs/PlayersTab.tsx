@@ -6,6 +6,32 @@ import { getPositionColor } from '@/lib/matching';
 
 const ALL_POSITIONS: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
 
+const FAKE_NAMES = [
+  'James L.', 'Kobe B.', 'Stephen C.', 'Kevin D.', 'LeBron J.',
+  'Giannis A.', 'Luka D.', 'Jayson T.', 'Joel E.', 'Nikola J.',
+  'Devin B.', 'Damian L.', 'Kawhi L.', 'Paul G.', 'Zion W.',
+  'Anthony E.', 'Ja M.', 'Trae Y.', 'Donovan M.', 'Bam A.',
+  'Chris P.', 'Rudy G.', 'Karl-Anthony T.', 'Draymond G.', 'Bradley B.',
+  'Tyler H.', 'Khris M.', 'CJ M.', 'De\'Aaron F.', 'Shai G.',
+];
+
+function generateFakePlayers(count: number, existingCount: number): Player[] {
+  const shuffled = [...FAKE_NAMES].sort(() => Math.random() - 0.5);
+  return Array.from({ length: count }, (_, i) => {
+    const allPos: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
+    const shuffledPos = allPos.sort(() => Math.random() - 0.5);
+    const numPos = Math.floor(Math.random() * 2) + 1; // 1 or 2 positions
+    return {
+      id: crypto.randomUUID(),
+      name: shuffled[i % shuffled.length] ?? `Player ${existingCount + i + 1}`,
+      positions: shuffledPos.slice(0, numPos) as Position[],
+      skillLevel: Math.floor(Math.random() * 5) + 1,
+      isAvailable: true,
+      stats: { gamesPlayed: 0, wins: 0 },
+    };
+  });
+}
+
 const AVATAR_COLORS = [
   { bg: 'rgba(255,107,0,0.15)', color: '#FF8C38' },
   { bg: 'rgba(59,130,246,0.12)', color: '#60A5FA' },
@@ -50,6 +76,17 @@ export default function PlayersTab({ session, onUpdate }: Props) {
   const [saving, setSaving] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showDevPanel, setShowDevPanel] = useState(false);
+  const [devCount, setDevCount] = useState(10);
+  const [devAdding, setDevAdding] = useState(false);
+
+  async function handleDevAdd() {
+    setDevAdding(true);
+    const fake = generateFakePlayers(devCount, session.players.length);
+    await onUpdate({ players: [...session.players, ...fake] });
+    setDevAdding(false);
+    setShowDevPanel(false);
+  }
 
   function togglePosition(pos: Position) {
     setPositions((prev) =>
@@ -98,12 +135,47 @@ export default function PlayersTab({ session, onUpdate }: Props) {
           { value: available.length,       label: 'Ready', color: '#4ADE80' },
           { value: teamsFromAvailable,     label: 'Teams',  color: '#60A5FA' },
         ].map(({ value, label, color }) => (
-          <div key={label} className="rounded-xl p-3 text-center" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+          <div
+            key={label}
+            className="rounded-xl p-3 text-center"
+            style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
+            onDoubleClick={label === 'Total' ? () => setShowDevPanel((v) => !v) : undefined}
+          >
             <div className="font-display text-3xl leading-none" style={{ color }}>{value}</div>
             <div className="text-[10px] font-bold tracking-widest uppercase mt-1" style={{ color: '#3D4557' }}>{label}</div>
           </div>
         ))}
       </div>
+
+      {/* Dev panel — double-tap Total to reveal */}
+      {showDevPanel && (
+        <div
+          className="rounded-xl p-3 flex items-center gap-3"
+          style={{ background: 'rgba(168,85,247,0.08)', border: '1.5px dashed rgba(168,85,247,0.3)' }}
+        >
+          <span className="text-xs font-bold" style={{ color: '#C084FC' }}>🧪 Add</span>
+          <button
+            onClick={() => setDevCount((v) => Math.max(1, v - 1))}
+            className="w-7 h-7 rounded-lg font-bold text-white flex items-center justify-center"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          >−</button>
+          <span className="font-black text-white w-6 text-center">{devCount}</span>
+          <button
+            onClick={() => setDevCount((v) => Math.min(30, v + 1))}
+            className="w-7 h-7 rounded-lg font-bold text-white flex items-center justify-center"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          >+</button>
+          <span className="text-xs" style={{ color: '#C084FC' }}>fake players</span>
+          <button
+            onClick={handleDevAdd}
+            disabled={devAdding}
+            className="ml-auto text-xs font-bold px-3 py-1.5 rounded-lg text-white disabled:opacity-50"
+            style={{ background: 'rgba(168,85,247,0.4)', border: '1px solid rgba(168,85,247,0.5)' }}
+          >
+            {devAdding ? '...' : 'Add'}
+          </button>
+        </div>
+      )}
 
       {/* Add player */}
       {!showForm ? (

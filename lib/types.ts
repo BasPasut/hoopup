@@ -1,6 +1,7 @@
 export type Position = 'PG' | 'SG' | 'SF' | 'PF' | 'C';
 export type GameMode = '3v3' | '4v4' | '5v5';
 export type TournamentType = 'king-of-court' | 'round-robin' | 'elimination';
+export type ScoreMode = '1-2' | '2-3';
 export type SessionStatus = 'setup' | 'active' | 'completed';
 
 export interface Player {
@@ -47,10 +48,12 @@ export interface Match {
 export interface SessionSettings {
   gameMode: GameMode;
   tournamentType: TournamentType;
-  timerDuration: number; // seconds, default 480 (8 min)
-  consecutiveWinsToRest: number; // default 2
-  restRounds: number; // default 1
+  timerDuration: number;          // seconds, default 480 (8 min)
+  consecutiveWinsToRest: number;  // default 2
+  restRounds: number;             // default 1
   sessionName: string;
+  scoreMode: ScoreMode;           // '1-2' or '2-3', default '1-2'
+  scoreToWin: number | null;      // null = disabled, e.g. 11
 }
 
 export interface Session {

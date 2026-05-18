@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
       consecutiveWinsToRest: body.consecutiveWinsToRest ?? 2,
       restRounds: body.restRounds ?? 1,
       sessionName: body.sessionName ?? 'Sunday Basketball',
+      scoreMode: body.scoreMode ?? '1-2',
+      scoreToWin: body.scoreToWin ?? null,
     };
 
     const now = new Date();

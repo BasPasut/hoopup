@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GameMode, TournamentType } from '@/lib/types';
+import { GameMode, TournamentType, ScoreMode } from '@/lib/types';
 
 const GAME_MODES: GameMode[] = ['3v3', '4v4', '5v5'];
 const TOURNAMENT_TYPES: { value: TournamentType; label: string; desc: string; icon: string }[] = [
@@ -26,6 +26,9 @@ export default function Home() {
   const [tournamentType, setTournamentType] = useState<TournamentType>('king-of-court');
   const [timerMinutes, setTimerMinutes] = useState(8);
   const [winsToRest, setWinsToRest] = useState(2);
+  const [scoreMode, setScoreMode] = useState<ScoreMode>('1-2');
+  const [scoreToWinEnabled, setScoreToWinEnabled] = useState(false);
+  const [scoreToWin, setScoreToWin] = useState(11);
 
   async function handleCreate() {
     setCreating(true);
@@ -40,6 +43,8 @@ export default function Home() {
           timerDuration: timerMinutes * 60,
           consecutiveWinsToRest: winsToRest,
           restRounds: 1,
+          scoreMode,
+          scoreToWin: scoreToWinEnabled ? scoreToWin : null,
         }),
       });
       if (!res.ok) throw new Error('Failed');
@@ -284,6 +289,60 @@ export default function Home() {
         </div>
 
         {/* Wins before rest */}
+        {/* Score mode */}
+        <div className="flex flex-col gap-2">
+          <SectionLabel>Score Per Basket</SectionLabel>
+          <div className="grid grid-cols-2 gap-2">
+            {(['1-2', '2-3'] as ScoreMode[]).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setScoreMode(mode)}
+                className="py-4 rounded-xl font-black text-lg transition-all flex flex-col items-center gap-0.5"
+                style={
+                  scoreMode === mode
+                    ? { background: 'rgba(255,107,0,0.1)', border: '1.5px solid var(--orange)', color: 'var(--orange)' }
+                    : { background: 'var(--card)', border: '1.5px solid var(--border)', color: '#8892A4' }
+                }
+              >
+                {mode === '1-2' ? '1 / 2' : '2 / 3'}
+                <span className="text-[9px] font-semibold tracking-widest uppercase opacity-70">
+                  {mode === '1-2' ? 'Regular' : 'Basketball'}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Score to win */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <SectionLabel>Score to Win</SectionLabel>
+            <button
+              onClick={() => setScoreToWinEnabled((v) => !v)}
+              className="ml-auto text-[10px] font-bold px-3 py-1 rounded-full transition-all"
+              style={
+                scoreToWinEnabled
+                  ? { background: 'rgba(255,107,0,0.15)', border: '1px solid var(--orange)', color: 'var(--orange2)' }
+                  : { background: 'var(--surface)', border: '1px solid var(--border)', color: '#3D4557' }
+              }
+            >
+              {scoreToWinEnabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+          {scoreToWinEnabled && (
+            <div className="flex items-center gap-3 rounded-xl px-3 py-2" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+              <Stepper onClick={() => setScoreToWin((v) => Math.max(1, v - 1))}>−</Stepper>
+              <span className="flex-1 text-center text-3xl font-black text-white tabular-nums">
+                {scoreToWin} <span className="text-base font-semibold" style={{ color: '#8892A4' }}>PTS</span>
+              </span>
+              <Stepper onClick={() => setScoreToWin((v) => v + 1)}>+</Stepper>
+            </div>
+          )}
+          {!scoreToWinEnabled && (
+            <p className="text-[10px]" style={{ color: '#3D4557' }}>Game ends by timer only</p>
+          )}
+        </div>
+
         {tournamentType === 'king-of-court' && (
           <div className="flex flex-col gap-2">
             <SectionLabel>Wins Before Rest</SectionLabel>

@@ -63,16 +63,25 @@ export default function MatchTab({ session, onUpdate }: Props) {
   }
 
   async function adjustScore(side: 'teamA' | 'teamB', delta: number) {
-    if (!match) return;
-    await onUpdate({ currentMatch: { ...match, score: { ...match.score, [side]: Math.max(0, match.score[side] + delta) } } });
+    if (!match || declaring) return;
+    const newScore = { ...match.score, [side]: Math.max(0, match.score[side] + delta) };
+    const updatedMatch = { ...match, score: newScore };
+    await onUpdate({ currentMatch: updatedMatch });
+
+    const scoreToWin = session.settings.scoreToWin ?? null;
+    if (scoreToWin !== null) {
+      if (newScore.teamA >= scoreToWin && teamA) { await handleDeclareWinner(teamA.id, updatedMatch); return; }
+      if (newScore.teamB >= scoreToWin && teamB) { await handleDeclareWinner(teamB.id, updatedMatch); return; }
+    }
   }
 
-  async function handleDeclareWinner(winnerId: string) {
+  async function handleDeclareWinner(winnerId: string, matchOverride?: Match) {
     if (!match || declaring) return;
     setDeclaring(true);
+    const activeMatch = matchOverride ?? match;
 
     const winnerTeam = session.teams.find((t) => t.id === winnerId)!;
-    const loserTeam  = session.teams.find((t) => t.id !== winnerId && [match.teamAId, match.teamBId].includes(t.id))!;
+    const loserTeam  = session.teams.find((t) => t.id !== winnerId && [activeMatch.teamAId, activeMatch.teamBId].includes(t.id))!;
 
     const newConsecWins = winnerTeam.consecutiveWins + 1;
     const winsToRest = session.settings.consecutiveWinsToRest;
@@ -91,7 +100,7 @@ export default function MatchTab({ session, onUpdate }: Props) {
       return { ...player, stats: { gamesPlayed: player.stats.gamesPlayed + 1, wins: player.stats.wins + (onWinner ? 1 : 0) } };
     });
 
-    const completedMatch: Match = { ...match, endedAt: new Date().toISOString(), winnerId };
+    const completedMatch: Match = { ...activeMatch, endedAt: new Date().toISOString(), winnerId };
     const updatedTeamsMap = new Map(updatedTeams.map((t) => [t.id, t]));
 
     const processedTeams = updatedTeams.map((t) => {
@@ -164,6 +173,9 @@ export default function MatchTab({ session, onUpdate }: Props) {
   const timerColor = isExpired ? '#EF4444' : remaining < 60 ? '#FF6B00' : '#22C55E';
   const aLeading = match.score.teamA > match.score.teamB;
   const bLeading = match.score.teamB > match.score.teamA;
+  const scoreMode = session.settings.scoreMode ?? '1-2';
+  const pts = scoreMode === '2-3' ? [2, 3] : [1, 2];
+  const scoreToWin = session.settings.scoreToWin ?? null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -200,6 +212,11 @@ export default function MatchTab({ session, onUpdate }: Props) {
               ⏰ Time&apos;s up! Declare a winner.
             </p>
           )}
+          {scoreToWin !== null && !isExpired && (
+            <p className="text-center text-[10px] font-bold mt-1 tracking-widest uppercase" style={{ color: '#3D4557' }}>
+              First to {scoreToWin} pts wins
+            </p>
+          )}
         </div>
 
         {/* Teams & scores */}
@@ -213,9 +230,11 @@ export default function MatchTab({ session, onUpdate }: Props) {
             >
               {match.score.teamA}
             </p>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1">
               <ScoreBtn onClick={() => adjustScore('teamA', -1)} color="#1E2433">−</ScoreBtn>
-              <ScoreBtn onClick={() => adjustScore('teamA', +1)} color="var(--orange)">+</ScoreBtn>
+              {pts.map((p) => (
+                <ScoreBtn key={p} onClick={() => adjustScore('teamA', p)} color="var(--orange)">+{p}</ScoreBtn>
+              ))}
             </div>
           </div>
 
@@ -234,9 +253,11 @@ export default function MatchTab({ session, onUpdate }: Props) {
             >
               {match.score.teamB}
             </p>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1">
               <ScoreBtn onClick={() => adjustScore('teamB', -1)} color="#1E2433">−</ScoreBtn>
-              <ScoreBtn onClick={() => adjustScore('teamB', +1)} color="#3B82F6">+</ScoreBtn>
+              {pts.map((p) => (
+                <ScoreBtn key={p} onClick={() => adjustScore('teamB', p)} color="#3B82F6">+{p}</ScoreBtn>
+              ))}
             </div>
           </div>
         </div>

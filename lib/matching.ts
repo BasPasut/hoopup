@@ -2,13 +2,24 @@ import { Player, Team, GameMode } from './types';
 
 type FunctionalGroup = 'GUARD' | 'WING' | 'BIG';
 
-// Map traditional positions → 3 fluid functional groups (small-ball logic)
+// Map traditional positions → 3 fluid functional groups (small-ball logic).
+// A player with multiple positions is assigned to the group their positions
+// cover, preferring the rarest group so a SF/PF can fill a BIG shortage.
+// Priority order (rarest first by typical pickup pool): BIG > GUARD > WING.
+const GROUP_POSITIONS: Record<FunctionalGroup, ReadonlySet<string>> = {
+  BIG:   new Set(['C', 'PF']),
+  GUARD: new Set(['PG']),
+  WING:  new Set(['SG', 'SF']),
+};
+const GROUP_PRIORITY: FunctionalGroup[] = ['BIG', 'GUARD', 'WING'];
+
 function getFunctionalGroup(player: Player): FunctionalGroup {
-  const primary = player.positions[0];
-  if (!primary) return 'WING';
-  if (primary === 'PG') return 'GUARD';
-  if (primary === 'SG' || primary === 'SF') return 'WING';
-  return 'BIG'; // PF and C treated interchangeably
+  if (player.positions.length === 0) return 'WING';
+  // Return the highest-priority group the player can fill
+  for (const group of GROUP_PRIORITY) {
+    if (player.positions.some((p) => GROUP_POSITIONS[group].has(p))) return group;
+  }
+  return 'WING';
 }
 
 function generateTeamName(index: number): string {

@@ -42,6 +42,7 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
   const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -92,10 +93,17 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
         const updated = await res.json();
         setSession(updated);
         writeCache(code, updated);
+      } else {
+        setSession(session);
+        writeCache(code, session);
+        setSaveError(true);
+        setTimeout(() => setSaveError(false), 3000);
       }
     } catch {
       setSession(session);
       writeCache(code, session);
+      setSaveError(true);
+      setTimeout(() => setSaveError(false), 3000);
     }
     setSaving(false);
   }
@@ -161,7 +169,8 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
               <span>{session.settings.gameMode}</span>
               <span style={{ color: 'var(--border)' }}>·</span>
               <span>{session.players.length} players</span>
-              {saving && <span style={{ color: 'var(--orange2)' }}>· Saving...</span>}
+              {saving && <span style={{ color: 'var(--orange2)' }}>· Saving…</span>}
+              {saveError && <span className="text-red-400 font-bold">· Save failed</span>}
               {session.status === 'completed' && <span className="text-red-400 font-bold">· Ended</span>}
             </div>
           </div>

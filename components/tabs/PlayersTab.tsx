@@ -160,6 +160,10 @@ export default function PlayersTab({ session, onUpdate }: Props) {
     await onUpdate({ players: updated });
   }
 
+  async function handleSavePlayer(updated: Player) {
+    await onUpdate({ players: session.players.map((p) => p.id === updated.id ? updated : p) });
+  }
+
   const available = session.players.filter((p) => p.isAvailable);
   const sittingOut = session.players.filter((p) => !p.isAvailable);
   const playersPerTeam = parseInt(session.settings.gameMode[0]);
@@ -317,7 +321,7 @@ export default function PlayersTab({ session, onUpdate }: Props) {
         <div className="flex flex-col gap-2">
           <SectionLabel count={available.length}>Available</SectionLabel>
           {available.map((player) => (
-            <PlayerCard key={player.id} player={player} onRemove={() => handleRemove(player.id)} onToggleAvailable={() => toggleAvailable(player)} removing={removingId === player.id} editingId={editingId} setEditingId={setEditingId} />
+            <PlayerCard key={player.id} player={player} onRemove={() => handleRemove(player.id)} onToggleAvailable={() => toggleAvailable(player)} onSave={handleSavePlayer} removing={removingId === player.id} editingId={editingId} setEditingId={setEditingId} />
           ))}
         </div>
       )}
@@ -327,7 +331,7 @@ export default function PlayersTab({ session, onUpdate }: Props) {
         <div className="flex flex-col gap-2">
           <SectionLabel count={sittingOut.length}>Sitting Out</SectionLabel>
           {sittingOut.map((player) => (
-            <PlayerCard key={player.id} player={player} onRemove={() => handleRemove(player.id)} onToggleAvailable={() => toggleAvailable(player)} removing={removingId === player.id} editingId={editingId} setEditingId={setEditingId} dimmed />
+            <PlayerCard key={player.id} player={player} onRemove={() => handleRemove(player.id)} onToggleAvailable={() => toggleAvailable(player)} onSave={handleSavePlayer} removing={removingId === player.id} editingId={editingId} setEditingId={setEditingId} dimmed />
           ))}
         </div>
       )}
@@ -359,21 +363,47 @@ function SectionLabel({ children, count }: { children: React.ReactNode; count: n
 }
 
 function PlayerCard({
-  player, onRemove, onToggleAvailable, removing, editingId, setEditingId, dimmed = false,
+  player, onRemove, onToggleAvailable, onSave, removing, editingId, setEditingId, dimmed = false,
 }: {
-  player: Player; onRemove: () => void; onToggleAvailable: () => void;
+  player: Player; onRemove: () => void; onToggleAvailable: () => void; onSave: (p: Player) => void;
   removing: boolean; editingId: string | null; setEditingId: (id: string | null) => void; dimmed?: boolean;
 }) {
   const expanded = editingId === player.id;
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(player.name);
+  const [editPositions, setEditPositions] = useState<Position[]>(player.positions);
+  const [editSkillLevel, setEditSkillLevel] = useState(player.skillLevel);
   const avatar = getAvatarColor(player.name);
+
+  function startEdit() {
+    setEditName(player.name);
+    setEditPositions(player.positions);
+    setEditSkillLevel(player.skillLevel);
+    setIsEditing(true);
+  }
+
+  function cancelEdit() { setIsEditing(false); }
+
+  function saveEdit() {
+    if (!editName.trim()) return;
+    onSave({ ...player, name: editName.trim(), positions: editPositions.length > 0 ? editPositions : [...ALL_POSITIONS], skillLevel: editSkillLevel });
+    setIsEditing(false);
+    setEditingId(null);
+  }
+
+  function toggleEditPos(pos: Position) {
+    setEditPositions((prev) => prev.includes(pos) ? prev.filter((p) => p !== pos) : [...prev, pos]);
+  }
 
   return (
     <div
       className="rounded-xl overflow-hidden transition-all"
       style={{ background: 'var(--card)', border: `1.5px solid ${dimmed ? 'var(--surface)' : 'var(--border)'}`, opacity: dimmed ? 0.55 : 1 }}
     >
-      <div className="flex items-center gap-3 p-3 cursor-pointer" onClick={() => setEditingId(expanded ? null : player.id)}>
-        {/* Avatar */}
+      <div
+        className="flex items-center gap-3 p-3 cursor-pointer"
+        onClick={() => { setIsEditing(false); setEditingId(expanded ? null : player.id); }}
+      >
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-black flex-shrink-0"
           style={{ background: avatar.bg, color: avatar.color }}
@@ -400,7 +430,7 @@ function PlayerCard({
         </div>
       </div>
 
-      {expanded && (
+      {expanded && !isEditing && (
         <div className="flex gap-2 px-3 pb-3" style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
           <button
             onClick={onToggleAvailable}
@@ -414,13 +444,76 @@ function PlayerCard({
             {player.isAvailable ? '⏸ Sit Out' : '▶ Back In'}
           </button>
           <button
+            onClick={startEdit}
+            className="flex-1 py-2.5 rounded-lg font-bold text-sm transition-all"
+            style={{ background: 'rgba(96,165,250,0.08)', border: '1.5px solid rgba(96,165,250,0.25)', color: '#60A5FA' }}
+          >
+            ✏ Edit
+          </button>
+          <button
             onClick={onRemove}
             disabled={removing}
             className="flex-1 py-2.5 rounded-lg font-bold text-sm transition-all disabled:opacity-50"
             style={{ background: 'rgba(239,68,68,0.1)', border: '1.5px solid rgba(239,68,68,0.3)', color: '#F87171' }}
           >
-            {removing ? '...' : '🗑 Remove'}
+            {removing ? '...' : '🗑'}
           </button>
+        </div>
+      )}
+
+      {expanded && isEditing && (
+        <div className="px-3 pb-3 flex flex-col gap-3" style={{ borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+          <input
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            className="w-full rounded-xl px-3 py-2.5 text-white font-semibold text-sm focus:outline-none"
+            style={{ background: 'var(--surface)', border: '1.5px solid var(--border)' }}
+            autoFocus
+            onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+            onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--orange)')}
+            onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+          />
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#3D4557' }}>Positions</span>
+            <div className="flex flex-wrap gap-1.5">
+              {ALL_POSITIONS.map((pos) => (
+                <button
+                  key={pos}
+                  onClick={() => toggleEditPos(pos)}
+                  className="px-3 py-1.5 rounded-lg font-bold text-xs transition-all"
+                  style={
+                    editPositions.includes(pos)
+                      ? { background: 'rgba(255,107,0,0.15)', border: '1.5px solid var(--orange)', color: 'var(--orange2)' }
+                      : { background: 'var(--surface)', border: '1.5px solid var(--border)', color: '#8892A4' }
+                  }
+                >
+                  {pos}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#3D4557' }}>Skill Level</span>
+            <StarRating value={editSkillLevel} onChange={setEditSkillLevel} />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={cancelEdit}
+              className="flex-1 py-2.5 rounded-lg font-bold text-sm"
+              style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', color: '#8892A4' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={saveEdit}
+              disabled={!editName.trim()}
+              className="flex-1 py-2.5 rounded-lg font-bold text-sm text-white disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)' }}
+            >
+              Save
+            </button>
+          </div>
         </div>
       )}
     </div>

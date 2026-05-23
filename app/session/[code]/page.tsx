@@ -43,6 +43,7 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
 
   const fetchSession = useCallback(async () => {
     try {
@@ -76,6 +77,16 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
   useEffect(() => {
     if (session?.currentMatch && activeTab === 'queue') setActiveTab('match');
   }, [session?.currentMatch, activeTab]);
+
+  useEffect(() => {
+    window.history.pushState(null, '', window.location.href);
+    function onPopState() {
+      window.history.pushState(null, '', window.location.href);
+      setShowLeaveDialog(true);
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   async function handleUpdate(updates: Partial<Session>) {
     if (!session) return;
@@ -154,7 +165,7 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
       >
         <div className="flex items-center gap-3 max-w-lg mx-auto">
           <button
-            onClick={() => router.push('/')}
+            onClick={() => setShowLeaveDialog(true)}
             className="w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-colors"
             style={{ background: 'var(--card)', border: '1.5px solid var(--border)', color: '#8892A4' }}
           >
@@ -238,6 +249,45 @@ export default function SessionPage({ params }: { params: Promise<{ code: string
       </nav>
 
       {showQR && <QRModal code={code} sessionName={session.settings.sessionName} onClose={() => setShowQR(false)} />}
+
+      {showLeaveDialog && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-8"
+          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowLeaveDialog(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-5"
+            style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="text-4xl mb-3">🏠</div>
+              <h3 className="font-display text-2xl tracking-widest text-white">Leave Session?</h3>
+              <p className="text-sm mt-2 leading-relaxed" style={{ color: '#8892A4' }}>
+                The session stays active. Rejoin anytime with code{' '}
+                <span className="font-black tracking-widest text-white">{code}</span>.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => router.push('/')}
+                className="w-full py-3.5 rounded-xl font-bold text-sm transition-all"
+                style={{ background: 'rgba(239,68,68,0.1)', border: '1.5px solid rgba(239,68,68,0.3)', color: '#F87171' }}
+              >
+                Leave
+              </button>
+              <button
+                onClick={() => setShowLeaveDialog(false)}
+                className="w-full py-3.5 rounded-xl font-bold text-sm text-white transition-all"
+                style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 4px 16px rgba(255,107,0,0.3)' }}
+              >
+                Stay in Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

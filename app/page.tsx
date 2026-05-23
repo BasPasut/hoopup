@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GameMode, TournamentType, ScoreMode } from '@/lib/types';
+import { GameMode, TournamentType, ScoreMode, Player } from '@/lib/types';
+import { parseAny } from '@/lib/import';
 
 const GAME_MODES: GameMode[] = ['3v3', '4v4', '5v5'];
 const TOURNAMENT_TYPES: { value: TournamentType; label: string; desc: string; icon: string }[] = [
@@ -15,11 +16,13 @@ const FEATURES = ['Fair Matching', 'Live Timer', 'Queue Mgmt', 'Win Stats', 'QR 
 
 export default function Home() {
   const router = useRouter();
-  const [view, setView] = useState<'home' | 'create' | 'join'>('home');
+  const [view, setView] = useState<'home' | 'create' | 'join' | 'import'>('home');
   const [joinCode, setJoinCode] = useState('');
   const [joinError, setJoinError] = useState('');
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importedPlayers, setImportedPlayers] = useState<Player[]>([]);
 
   const [sessionName, setSessionName] = useState('Sunday Basketball');
   const [gameMode, setGameMode] = useState<GameMode>('5v5');
@@ -68,6 +71,44 @@ export default function Home() {
       return;
     }
     router.push(`/session/${code}`);
+  }
+
+  function handleImportTextChange(text: string) {
+    setImportText(text);
+    const { players, sessionName: detectedName } = parseAny(text);
+    setImportedPlayers(players);
+    if (detectedName) setSessionName(detectedName);
+  }
+
+  async function handleCreateWithImport() {
+    if (importedPlayers.length === 0) return;
+    setCreating(true);
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionName,
+          gameMode,
+          tournamentType,
+          timerDuration: timerMinutes * 60,
+          consecutiveWinsToRest: winsToRest,
+          restRounds,
+          scoreMode,
+          scoreToWin: scoreToWinEnabled ? scoreToWin : null,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const session = await res.json();
+      await fetch(`/api/sessions/${session.code}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ players: importedPlayers }),
+      });
+      router.push(`/session/${session.code}`);
+    } catch {
+      setCreating(false);
+    }
   }
 
   /* ── Home ── */
@@ -146,6 +187,14 @@ export default function Home() {
             </span>
             Join with Code
           </button>
+
+          <button
+            onClick={() => setView('import')}
+            className="w-full font-bold text-sm py-3 rounded-2xl transition-all flex items-center justify-center gap-2"
+            style={{ background: 'transparent', border: '1.5px dashed var(--border)', color: '#8892A4' }}
+          >
+            Import from LINE list
+          </button>
         </div>
       </main>
     );
@@ -185,6 +234,120 @@ export default function Home() {
           >
             {joining ? 'Joining...' : 'Join →'}
           </button>
+        </div>
+      </main>
+    );
+  }
+
+  /* ── Import ── */
+  if (view === 'import') {
+    return (
+      <main className="flex flex-col min-h-dvh px-5 py-12 gap-6 pb-28">
+        <button
+          onClick={() => { setView('home'); setImportText(''); setImportedPlayers([]); }}
+          className="flex items-center gap-2 w-fit text-sm font-semibold uppercase tracking-widest"
+          style={{ color: '#8892A4' }}
+        >
+          ← Back
+        </button>
+        <div>
+          <h2 className="font-display text-4xl tracking-widest text-white">Import from LINE</h2>
+          <p className="text-sm mt-1" style={{ color: '#8892A4' }}>Paste your LINE group list to set up the session</p>
+        </div>
+
+        <div className="flex flex-col gap-6 max-w-sm">
+          {/* Paste area */}
+          <div className="flex flex-col gap-2">
+            <SectionLabel>Paste LINE List</SectionLabel>
+            <textarea
+              value={importText}
+              onChange={(e) => handleImportTextChange(e.target.value)}
+              placeholder={'เปิดตี้: Sunday 25 May\n1.ติ\n2.นพ\n3.บอส\nนาย\n5.อั๋น'}
+              rows={8}
+              className="w-full rounded-xl px-4 py-3 text-white text-sm font-mono focus:outline-none placeholder-gray-600 resize-none"
+              style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
+              autoFocus
+              onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--orange)')}
+              onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+            />
+          </div>
+
+          {/* Preview */}
+          {importedPlayers.length > 0 && (
+            <>
+              {/* Session name */}
+              <div className="flex flex-col gap-2">
+                <SectionLabel>Session Name</SectionLabel>
+                <input
+                  type="text"
+                  value={sessionName}
+                  onChange={(e) => setSessionName(e.target.value)}
+                  className="w-full rounded-xl px-4 py-3 text-white font-semibold text-base focus:outline-none"
+                  style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--orange)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+                />
+              </div>
+
+              {/* Game mode */}
+              <div className="flex flex-col gap-2">
+                <SectionLabel>Game Mode</SectionLabel>
+                <div className="grid grid-cols-3 gap-2">
+                  {GAME_MODES.map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setGameMode(m)}
+                      className="py-4 rounded-xl font-black text-xl transition-all flex flex-col items-center gap-0.5"
+                      style={
+                        gameMode === m
+                          ? { background: 'rgba(255,107,0,0.1)', border: '1.5px solid var(--orange)', color: 'var(--orange)' }
+                          : { background: 'var(--card)', border: '1.5px solid var(--border)', color: '#8892A4' }
+                      }
+                    >
+                      {m}
+                      <span className="text-[9px] font-semibold tracking-widest uppercase opacity-70">
+                        {m === '3v3' ? 'Half' : m === '4v4' ? 'Standard' : 'Full'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Player list preview */}
+              <div className="flex flex-col gap-2">
+                <SectionLabel>{importedPlayers.length} Players</SectionLabel>
+                <div className="flex flex-col gap-1.5">
+                  {importedPlayers.map((p, idx) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                      style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}
+                    >
+                      <span className="text-xs font-bold w-5 text-right flex-shrink-0" style={{ color: '#3D4557' }}>{idx + 1}</span>
+                      <span className="flex-1 text-white text-sm font-semibold truncate">{p.name}</span>
+                      <button
+                        onClick={() => setImportedPlayers((prev) => prev.filter((x) => x.id !== p.id))}
+                        className="text-base flex-shrink-0"
+                        style={{ color: '#3D4557' }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                onClick={handleCreateWithImport}
+                disabled={creating || importedPlayers.length === 0}
+                className="w-full text-white font-bold text-lg py-5 rounded-2xl transition-all disabled:opacity-50 uppercase tracking-wide flex items-center justify-center gap-3"
+                style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 8px 28px rgba(255,107,0,0.4)' }}
+              >
+                <span>🏀</span>
+                {creating ? 'Creating...' : `Create with ${importedPlayers.length} Players`}
+              </button>
+            </>
+          )}
         </div>
       </main>
     );

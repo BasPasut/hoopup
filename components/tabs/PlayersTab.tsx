@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { Session, Player, Position } from '@/lib/types';
 import { getPositionColor } from '@/lib/matching';
+import { parseAny } from '@/lib/import';
 
 const ALL_POSITIONS: Position[] = ['PG', 'SG', 'SF', 'PF', 'C'];
 
@@ -79,6 +80,10 @@ export default function PlayersTab({ session, onUpdate }: Props) {
   const [showDevPanel, setShowDevPanel] = useState(false);
   const [devCount, setDevCount] = useState(10);
   const [devAdding, setDevAdding] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importAdding, setImportAdding] = useState(false);
+  const [copied, setCopied] = useState(false);
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -105,6 +110,28 @@ export default function PlayersTab({ session, onUpdate }: Props) {
     setPositions((prev) =>
       prev.includes(pos) ? prev.filter((p) => p !== pos) : prev.length < 5 ? [...prev, pos] : prev
     );
+  }
+
+  function getTemplate() {
+    return `🏀 HoopUp – Player Registration\nSession: ${session.code}\n\nFill in YOUR details below and send back:\n───────────────────\nName: \nPosition: (PG / SG / SF / PF / C, leave blank = any)\nLevel: (1–5 stars, leave blank = 3 stars)\n───────────────────`;
+  }
+
+  async function copyTemplate() {
+    await navigator.clipboard.writeText(getTemplate());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleImport() {
+    const { players: newPlayers, sessionName } = parseAny(importText);
+    if (newPlayers.length === 0) return;
+    setImportAdding(true);
+    const updates: Partial<Session> = { players: [...session.players, ...newPlayers] };
+    if (sessionName) updates.settings = { ...session.settings, sessionName };
+    await onUpdate(updates);
+    setImportAdding(false);
+    setImportText('');
+    setShowImport(false);
   }
 
   async function handleAdd() {
@@ -191,14 +218,34 @@ export default function PlayersTab({ session, onUpdate }: Props) {
       )}
 
       {/* Add player */}
-      {!showForm ? (
-        <button
-          onClick={() => setShowForm(true)}
-          className="w-full text-white font-bold text-base py-4 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-wide"
-          style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 6px 20px rgba(255,107,0,0.3)' }}
-        >
-          <span className="text-xl font-black">+</span> Add Player
-        </button>
+      {!showForm && !showImport ? (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-full text-white font-bold text-base py-4 rounded-xl transition-all flex items-center justify-center gap-2 uppercase tracking-wide"
+            style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)', boxShadow: '0 6px 20px rgba(255,107,0,0.3)' }}
+          >
+            <span className="text-xl font-black">+</span> Add Player
+          </button>
+          <button
+            onClick={() => setShowImport(true)}
+            className="w-full font-bold text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+            style={{ background: 'var(--card)', border: '1.5px solid var(--border)', color: '#8892A4' }}
+          >
+            Import from LINE
+          </button>
+        </div>
+      ) : showImport ? (
+        <ImportPanel
+          session={session}
+          importText={importText}
+          setImportText={setImportText}
+          importAdding={importAdding}
+          copied={copied}
+          onCopyTemplate={copyTemplate}
+          onImport={handleImport}
+          onClose={() => { setShowImport(false); setImportText(''); }}
+        />
       ) : (
         <div className="rounded-2xl p-4 flex flex-col gap-4" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
           <div className="flex items-center justify-between">
@@ -376,6 +423,101 @@ function PlayerCard({
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function ImportPanel({
+  session, importText, setImportText, importAdding, copied, onCopyTemplate, onImport, onClose,
+}: {
+  session: Session;
+  importText: string;
+  setImportText: (v: string) => void;
+  importAdding: boolean;
+  copied: boolean;
+  onCopyTemplate: () => void;
+  onImport: () => void;
+  onClose: () => void;
+}) {
+  const { players: parsed, sessionName: detectedSessionName } = parseAny(importText);
+  const template = `🏀 HoopUp – Player Registration\nSession: ${session.code}\n\nFill in YOUR details below and send back:\n───────────────────\nName: \nPosition: (PG / SG / SF / PF / C, leave blank = any)\nLevel: (1–5 stars, leave blank = 3 stars)\n───────────────────`;
+
+  return (
+    <div className="rounded-2xl p-4 flex flex-col gap-4" style={{ background: 'var(--card)', border: '1.5px solid var(--border)' }}>
+      <div className="flex items-center justify-between">
+        <h3 className="font-display text-xl tracking-widest text-white">Import from LINE</h3>
+        <button onClick={onClose} className="text-2xl" style={{ color: '#3D4557' }}>×</button>
+      </div>
+
+      {/* Step 1: Copy template */}
+      <div className="flex flex-col gap-2">
+        <label className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#3D4557' }}>Step 1 — Copy & share in LINE group</label>
+        <div
+          className="rounded-xl p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap select-all"
+          style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', color: '#8892A4' }}
+        >
+          {template}
+        </div>
+        <button
+          onClick={onCopyTemplate}
+          className="w-full py-2.5 rounded-xl font-bold text-sm transition-all"
+          style={
+            copied
+              ? { background: 'rgba(34,197,94,0.12)', border: '1.5px solid rgba(34,197,94,0.3)', color: '#4ADE80' }
+              : { background: 'var(--surface)', border: '1.5px solid var(--border)', color: '#8892A4' }
+          }
+        >
+          {copied ? 'Copied!' : 'Copy Template'}
+        </button>
+      </div>
+
+      {/* Step 2: Paste replies */}
+      <div className="flex flex-col gap-2">
+        <label className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#3D4557' }}>Step 2 — Paste player list here</label>
+        <p className="text-[10px]" style={{ color: '#3D4557' }}>Works with HoopUp replies or a LINE numbered list (e.g. เปิดตี้: Sunday · 1.ติ · 2.นพ)</p>
+        <textarea
+          value={importText}
+          onChange={(e) => setImportText(e.target.value)}
+          placeholder={`เปิดตี้: Sunday 25 May\n1.ติ\n2.นพ\n3.บอส\nนาย\n5.อั๋น\n\n— or HoopUp format —\n\nName: John\nPosition: PG SG\nLevel: 4`}
+          rows={9}
+          className="w-full rounded-xl px-4 py-3 text-white text-sm font-mono focus:outline-none placeholder-gray-600 resize-none"
+          style={{ background: 'var(--surface)', border: '1.5px solid var(--border)' }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--orange)')}
+          onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
+        />
+        {importText.trim() && (
+          <div className="flex flex-col gap-1">
+            {detectedSessionName && (
+              <p className="text-xs font-bold" style={{ color: '#60A5FA' }}>
+                Session name: {detectedSessionName}
+              </p>
+            )}
+            <p className="text-xs font-bold" style={{ color: parsed.length > 0 ? '#4ADE80' : '#F87171' }}>
+              {parsed.length > 0
+                ? `${parsed.length} player${parsed.length > 1 ? 's' : ''} detected: ${parsed.map((p) => p.name).join(', ')}`
+                : 'No valid players found'}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={onClose}
+          className="flex-1 py-3 rounded-xl font-bold transition-all"
+          style={{ background: 'var(--surface)', border: '1.5px solid var(--border)', color: '#8892A4' }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onImport}
+          disabled={importAdding || parsed.length === 0}
+          className="flex-1 py-3 rounded-xl font-bold text-white transition-all disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg,#FF6B00,#FF8C38)' }}
+        >
+          {importAdding ? 'Adding...' : `Add ${parsed.length > 0 ? parsed.length : ''} Player${parsed.length !== 1 ? 's' : ''}`}
+        </button>
+      </div>
     </div>
   );
 }

@@ -48,11 +48,22 @@ export default function ReportModal({ session, onClose }: Props) {
         backgroundColor: '#ffffff',
         logging: false,
       });
-      const url = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `hoopup-${session.settings.sessionName.replace(/\s+/g, '-')}-${session.date}.png`;
-      a.click();
+      await new Promise<void>((resolve) => {
+        canvas.toBlob((blob) => {
+          if (!blob) { resolve(); return; }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `hoopup-${session.settings.sessionName.replace(/\s+/g, '-')}-${session.date}.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 100);
+          resolve();
+        }, 'image/png');
+      });
+    } catch (err) {
+      console.error('Export failed:', err);
     } finally {
       setExporting(false);
     }
